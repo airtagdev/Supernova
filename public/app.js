@@ -25,16 +25,37 @@ $('dismiss').onclick = () => $('notice').hidden = true;
 function collapse(value) { settings.collapsed = value; $('toolbar').hidden = value; $('expand').hidden = !value; save(); }
 $('collapse').onclick = () => { collapse(true); $('expand').focus(); };
 $('expand').onclick = () => { collapse(false); $('collapse').focus(); };
+const changelog = $('changelog-modal');
+const showChangelogOnLoad = !location.hash || location.hash === '#home';
+let changelogDismissed = false;
+function openChangelog() {
+  if (!showChangelogOnLoad || changelogDismissed || !changelog.hidden) return;
+  changelog.hidden = false;
+  document.body.classList.add('modal-open');
+  requestAnimationFrame(() => $('changelog-close').focus());
+}
+function closeChangelog(immediate = false) {
+  if (changelog.hidden) return;
+  changelogDismissed = true;
+  document.body.classList.remove('modal-open');
+  if (immediate) { changelog.hidden = true; return; }
+  changelog.classList.add('is-closing');
+  setTimeout(() => { changelog.hidden = true; changelog.classList.remove('is-closing'); $('query').focus(); }, 170);
+}
+$('changelog-close').addEventListener('click', () => closeChangelog());
+changelog.querySelector('[data-changelog-close]').addEventListener('click', () => closeChangelog());
+document.addEventListener('keydown', event => { if (event.key === 'Escape' && !changelog.hidden) closeChangelog(); });
 function cleanup() { navigationId++; clearTimeout(loadTimer); currentFrame?.frame.remove(); currentFrame = null; $('frame-host').replaceChildren(); }
 function route() {
   const page = location.hash.slice(1) || 'home';
   if (page === 'browse' && activeUrl) return;
   cleanup(); const selected = ['home','games','settings'].includes(page) ? page : 'home';
+  if (selected !== 'home') closeChangelog(true);
   $('viewer').hidden = true; $('nav').hidden = false; $('notice').hidden = true;
   for (const id of ['home','games','settings']) $(id).hidden = id !== selected;
   document.querySelectorAll('nav a').forEach(link => { if (link.hash === '#' + selected) link.setAttribute('aria-current','page'); else link.removeAttribute('aria-current'); });
 }
-window.addEventListener('hashchange', route); route();
+window.addEventListener('hashchange', route); route(); openChangelog();
 function loadScript(src) { return new Promise((resolve,reject) => { const script = document.createElement('script'); script.src = src; script.onload = resolve; script.onerror = () => { script.remove(); reject(new Error('Could not load proxy files. Please retry.')); }; document.head.append(script); }); }
 async function initialize() {
   if (proxy) return proxy;
