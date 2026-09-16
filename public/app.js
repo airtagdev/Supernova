@@ -29,22 +29,24 @@ const changelog = $('changelog-modal');
 const showChangelogOnLoad = !location.hash || location.hash === '#home';
 let changelogDismissed = false;
 function openChangelog() {
-  if (!showChangelogOnLoad || changelogDismissed || !changelog.hidden) return;
+  if (!changelog || !showChangelogOnLoad || changelogDismissed || !changelog.hidden) return;
   changelog.hidden = false;
   document.body.classList.add('modal-open');
   requestAnimationFrame(() => $('changelog-close').focus());
 }
 function closeChangelog(immediate = false) {
-  if (changelog.hidden) return;
+  if (!changelog || changelog.hidden) return;
   changelogDismissed = true;
   document.body.classList.remove('modal-open');
   if (immediate) { changelog.hidden = true; return; }
   changelog.classList.add('is-closing');
   setTimeout(() => { changelog.hidden = true; changelog.classList.remove('is-closing'); $('query').focus(); }, 170);
 }
-$('changelog-close').addEventListener('click', () => closeChangelog());
-changelog.querySelector('[data-changelog-close]').addEventListener('click', () => closeChangelog());
-document.addEventListener('keydown', event => { if (event.key === 'Escape' && !changelog.hidden) closeChangelog(); });
+if (changelog) {
+  $('changelog-close').addEventListener('click', () => closeChangelog());
+  changelog.querySelector('[data-changelog-close]').addEventListener('click', () => closeChangelog());
+}
+document.addEventListener('keydown', event => { if (event.key === 'Escape' && changelog && !changelog.hidden) closeChangelog(); });
 function cleanup() { navigationId++; clearTimeout(loadTimer); currentFrame?.frame.remove(); currentFrame = null; $('frame-host').replaceChildren(); }
 function route() {
   const page = location.hash.slice(1) || 'home';
