@@ -57,14 +57,91 @@ if (changelog) {
   changelog.querySelector('[data-changelog-close]').addEventListener('click', () => closeChangelog());
 }
 document.addEventListener('keydown', event => { if (event.key === 'Escape' && changelog && !changelog.hidden) closeChangelog(); });
+
+const chatClientId = sessionStorage.getItem('supernova.chat.id') || (crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+sessionStorage.setItem('supernova.chat.id', chatClientId);
+let chatStream = null;
+function appendChatMessage(message) {
+  if (!$('chat-messages')) return;
+  const item = document.createElement('article');
+  if (message.type === 'system') {
+    item.className = 'chat-message system';
+    item.textContent = message.text;
+  } else {
+    item.className = 'chat-message';
+    const meta = document.createElement('div');
+    const author = document.createElement('strong'); author.textContent = message.name;
+    const time = document.createElement('time'); time.dateTime = message.time;
+    time.textContent = new Date(message.time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    const text = document.createElement('p'); text.textContent = message.text;
+    meta.append(author, time); item.append(meta, text);
+  }
+  $('chat-messages').append(item);
+  $('chat-messages').scrollTop = $('chat-messages').scrollHeight;
+}
+function leaveChat(showGate = true) {
+  chatStream?.close(); chatStream = null;
+  if (!$('chat-room')) return;
+  $('chat-room').hidden = true;
+  if (showGate) $('chat-gate').hidden = false;
+  $('chat-presence').textContent = 'Offline';
+}
+if ($('chat-join')) {
+$('chat-join').addEventListener('submit', event => {
+  event.preventDefault();
+  const name = $('chat-name').value.replace(/\s+/g, ' ').trim();
+  if (name.length < 2) return notify('Choose a name with at least 2 characters.');
+  leaveChat(false);
+  $('chat-join').querySelector('button').disabled = true;
+  const stream = new EventSource(`/api/chat/events?clientId=${encodeURIComponent(chatClientId)}&name=${encodeURIComponent(name)}`);
+  chatStream = stream;
+  stream.addEventListener('open', () => {
+    if (chatStream !== stream) return;
+    $('chat-join').querySelector('button').disabled = false;
+    $('chat-gate').hidden = true; $('chat-room').hidden = false;
+    $('chat-message').focus();
+  });
+  stream.addEventListener('message', event => {
+    if (chatStream !== stream) return;
+    try {
+      const payload = JSON.parse(event.data);
+      if (payload.type === 'history') {
+        $('chat-messages').replaceChildren();
+        for (const message of payload.messages || []) appendChatMessage(message);
+      } else if (payload.type === 'presence') {
+        $('chat-presence').textContent = `${payload.count} online`;
+      } else if (payload.type === 'message' || payload.type === 'system') appendChatMessage(payload);
+    } catch {}
+  });
+  stream.addEventListener('error', () => {
+    if (chatStream === stream) $('chat-presence').textContent = 'Reconnecting…';
+    $('chat-join').querySelector('button').disabled = false;
+  });
+});
+$('chat-send').addEventListener('submit', async event => {
+  event.preventDefault();
+  const input = $('chat-message'); const message = input.value.trim();
+  if (!message || !chatStream) return;
+  const button = $('chat-send').querySelector('button'); button.disabled = true;
+  try {
+    const response = await fetch('/api/chat/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clientId: chatClientId, message }) });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Message could not be sent.');
+    input.value = '';
+  } catch (error) { notify(error.message); }
+  finally { button.disabled = false; input.focus(); }
+});
+$('chat-leave').addEventListener('click', () => { leaveChat(); $('chat-name').focus(); });
+}
 function cleanup() { navigationId++; clearTimeout(loadTimer); currentFrame?.frame.remove(); currentFrame = null; $('frame-host').replaceChildren(); }
 function route() {
   const page = location.hash.slice(1) || 'home';
   if (page === 'browse' && activeUrl) return;
-  cleanup(); const selected = ['home','games','settings'].includes(page) ? page : 'home';
+  cleanup(); const selected = ['home','games','chat','settings'].includes(page) ? page : 'home';
   if (selected !== 'home') closeChangelog(true);
+  if (selected !== 'chat') leaveChat();
   $('viewer').hidden = true; $('nav').hidden = false; $('notice').hidden = true;
-  for (const id of ['home','games','settings']) $(id).hidden = id !== selected;
+  for (const id of ['home','games','chat','settings']) { const pageElement = $(id); if (pageElement) pageElement.hidden = id !== selected; }
   document.querySelectorAll('nav a').forEach(link => { if (link.hash === '#' + selected) link.setAttribute('aria-current','page'); else link.removeAttribute('aria-current'); });
 }
 window.addEventListener('hashchange', route); route(); openChangelog();
@@ -104,7 +181,7 @@ async function repairProxy() {
 async function openContent(url, local = false) {
   cleanup(); const token = navigationId; activeUrl = url; localGame = local;
   location.hash = 'browse'; $('nav').hidden = true;
-  for (const id of ['home','games','settings']) $(id).hidden = true;
+  for (const id of ['home','games','chat','settings']) { const pageElement = $(id); if (pageElement) pageElement.hidden = true; }
   $('viewer').hidden = false; collapse(Boolean(settings.collapsed)); $('address').value = url;
   notify(local ? 'Opening game…' : 'Connecting…');
   loadTimer = setTimeout(() => { if (token === navigationId) notify('This page is taking longer than expected. You can retry or try another website.', true); }, 20000);
