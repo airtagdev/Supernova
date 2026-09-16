@@ -1,26 +1,36 @@
 import { resolveInput, gameTarget, engines } from './resolve.js';
 const $ = id => document.getElementById(id);
-const defaults = { title: '', icon: '', engine: 'duckduckgo', collapsed: false };
+const defaults = { title: '', icon: '', engine: 'duckduckgo', collapsed: false, preset: 'custom' };
+const tabPresets = {
+  classroom: { title: 'Google Classroom', icon: 'https://ssl.gstatic.com/classroom/favicon.png' },
+  drive: { title: 'Google Drive', icon: 'https://ssl.gstatic.com/images/branding/product/1x/drive_2020q4_48dp.png' },
+  docs: { title: 'Google Docs', icon: 'https://ssl.gstatic.com/docs/documents/images/kix-favicon7.ico' },
+  khan: { title: 'Khan Academy', icon: 'https://www.khanacademy.org/favicon.ico' },
+  socrative: { title: 'Socrative', icon: 'https://www.google.com/s2/favicons?domain=socrative.com&sz=128' }
+};
 const serviceWorkerUrl = '/sw.js?v=20260916-1';
 let settings;
 try { settings = { ...defaults, ...JSON.parse(localStorage.getItem('supernova.settings') || '{}') }; } catch { settings = { ...defaults }; }
 if (!engines[settings.engine]) settings.engine = defaults.engine;
+if (settings.preset !== 'custom' && !tabPresets[settings.preset]) settings.preset = defaults.preset;
 if (typeof settings.title !== 'string') settings.title = '';
 if (typeof settings.icon !== 'string' || !/^data:image\/(png|jpeg|webp|x-icon|vnd.microsoft.icon);base64,/.test(settings.icon)) settings.icon = '';
 let proxy, initializing, currentFrame, activeUrl, localGame = false, games = [], navigationId = 0, loadTimer;
 function notify(message, retry = false) { $('notice-text').textContent = message; $('retry').hidden = !retry; $('notice').hidden = false; }
 function save() { try { localStorage.setItem('supernova.settings', JSON.stringify(settings)); $('saved').textContent = 'Saved on this browser'; } catch { notify('Your browser could not save these settings.'); } }
-function appearance() { document.title = settings.title.trim() || 'Supernova'; $('favicon').href = settings.icon || '/icons/star.svg'; $('icon-preview').src = $('favicon').href; }
+function appearance() { const preset = tabPresets[settings.preset]; document.title = preset?.title || settings.title.trim() || 'Supernova'; $('favicon').href = preset?.icon || settings.icon || '/icons/star.svg'; $('icon-preview').src = $('favicon').href; }
 appearance();
-$('tab-title').value = settings.title; $('engine').value = settings.engine;
-$('tab-title').addEventListener('input', event => { settings.title = event.target.value; appearance(); save(); });
+const presetSelect = $('tab-preset');
+$('tab-title').value = settings.title; $('engine').value = settings.engine; if (presetSelect) presetSelect.value = settings.preset;
+presetSelect?.addEventListener('change', event => { settings.preset = event.target.value; appearance(); save(); });
+$('tab-title').addEventListener('input', event => { settings.preset = 'custom'; if (presetSelect) presetSelect.value = 'custom'; settings.title = event.target.value; appearance(); save(); });
 $('engine').addEventListener('change', event => { settings.engine = event.target.value; save(); });
 $('icon-file').addEventListener('change', async event => {
   const file = event.target.files[0]; if (!file) return;
   if (file.size > 256 * 1024 || !['image/png','image/jpeg','image/webp','image/x-icon','image/vnd.microsoft.icon'].includes(file.type)) return notify('Choose a PNG, JPG, WebP or ICO smaller than 256 KB.');
-  try { const bitmap = await createImageBitmap(file); bitmap.close(); const reader = new FileReader(); reader.onload = () => { settings.icon = reader.result; appearance(); save(); }; reader.readAsDataURL(file); } catch { notify('This image could not be opened. Try a PNG or WebP.'); }
+  try { const bitmap = await createImageBitmap(file); bitmap.close(); const reader = new FileReader(); reader.onload = () => { settings.preset = 'custom'; if (presetSelect) presetSelect.value = 'custom'; settings.icon = reader.result; appearance(); save(); }; reader.readAsDataURL(file); } catch { notify('This image could not be opened. Try a PNG or WebP.'); }
 });
-$('reset').onclick = () => { settings = { ...defaults }; $('tab-title').value = ''; $('engine').value = settings.engine; $('icon-file').value = ''; appearance(); save(); };
+$('reset').onclick = () => { settings = { ...defaults }; $('tab-title').value = ''; $('engine').value = settings.engine; if (presetSelect) presetSelect.value = settings.preset; $('icon-file').value = ''; appearance(); save(); };
 $('dismiss').onclick = () => $('notice').hidden = true;
 function collapse(value) { settings.collapsed = value; $('toolbar').hidden = value; $('expand').hidden = !value; save(); }
 $('collapse').onclick = () => { collapse(true); $('expand').focus(); };
