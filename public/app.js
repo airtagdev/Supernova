@@ -1,6 +1,7 @@
 import { resolveInput, gameTarget, engines } from './resolve.js';
 const $ = id => document.getElementById(id);
 const defaults = { title: '', icon: '', engine: 'duckduckgo', collapsed: false };
+const serviceWorkerUrl = '/sw.js?v=20260916-1';
 let settings;
 try { settings = { ...defaults, ...JSON.parse(localStorage.getItem('supernova.settings') || '{}') }; } catch { settings = { ...defaults }; }
 if (!engines[settings.engine]) settings.engine = defaults.engine;
@@ -45,14 +46,27 @@ async function initialize() {
     const { ScramjetController } = $scramjetLoadController();
     const controller = new ScramjetController({ prefix: '/service/', files: { wasm: '/scram/scramjet.wasm.wasm', all: '/scram/scramjet.all.js', sync: '/scram/scramjet.sync.js' } });
     await controller.init();
-    await navigator.serviceWorker.register('/sw.js');
+    const registration = await navigator.serviceWorker.register(serviceWorkerUrl, { scope: '/', updateViaCache: 'none' });
+    await registration.update();
     await navigator.serviceWorker.ready;
-    if (!navigator.serviceWorker.controller) await new Promise(resolve => navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true }));
+    if (!navigator.serviceWorker.controller || !navigator.serviceWorker.controller.scriptURL.includes(serviceWorkerUrl)) {
+      await Promise.race([
+        new Promise(resolve => navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true })),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('The proxy worker did not start. Select Retry to repair it.')), 10000))
+      ]);
+    }
     const connection = new BareMux.BareMuxConnection('/baremux/worker.js');
     await connection.setTransport('/libcurl/index.mjs', [{ websocket: `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/wisp/` }]);
     proxy = controller; return controller;
   })();
   try { return await initializing; } finally { initializing = null; }
+}
+async function repairProxy() {
+  proxy = null; initializing = null;
+  const registrations = await navigator.serviceWorker.getRegistrations();
+  await Promise.all(registrations.filter(registration => registration.scope === `${location.origin}/`).map(registration => registration.unregister()));
+  sessionStorage.setItem('supernova.reopen', JSON.stringify({ url: activeUrl, local: localGame }));
+  location.reload();
 }
 async function openContent(url, local = false) {
   cleanup(); const token = navigationId; activeUrl = url; localGame = local;
@@ -75,7 +89,11 @@ async function openContent(url, local = false) {
 for (const [form, input] of [['search','query'], ['address-form','address']]) $(form).addEventListener('submit', event => {
   event.preventDefault(); try { openContent(resolveInput($(input).value, settings.engine)); } catch (error) { notify(error.message); }
 });
-$('retry').onclick = () => activeUrl && openContent(activeUrl, localGame);
+$('retry').onclick = async () => {
+  if (!activeUrl) return;
+  if (localGame) return openContent(activeUrl, true);
+  try { await repairProxy(); } catch { openContent(activeUrl, false); }
+};
 $('reload').onclick = () => {
   try { if (currentFrame?.reload) currentFrame.reload(); else if (currentFrame) currentFrame.frame.contentWindow.location.reload(); else if (activeUrl) openContent(activeUrl, localGame); }
   catch { openContent(activeUrl, localGame); }
@@ -97,3 +115,8 @@ fetch('/games.json').then(response => { if (!response.ok) throw new Error(); ret
   if (!Array.isArray(data) || data.some(game => !game || !['name','icon','link'].every(key => typeof game[key] === 'string' && game[key].trim()))) throw new Error();
   games = data; renderGames();
 }).catch(() => { $('empty').textContent = 'The game collection could not be loaded. Please check games.json and reload.'; });
+try {
+  const reopen = JSON.parse(sessionStorage.getItem('supernova.reopen') || 'null');
+  sessionStorage.removeItem('supernova.reopen');
+  if (reopen?.url && typeof reopen.url === 'string') setTimeout(() => openContent(reopen.url, Boolean(reopen.local)));
+} catch { sessionStorage.removeItem('supernova.reopen'); }
