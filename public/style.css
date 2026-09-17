@@ -36,6 +36,14 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
 #toolbar-hint span,#toolbar-hint small{display:block;margin:0}
 #toolbar-hint span{font-size:12px;font-weight:600}
 #toolbar-hint small{margin-top:3px;color:var(--muted);font-size:10px}
+.nav-left{display:flex;align-items:center;gap:18px;min-width:0}
+.service-status{display:flex;align-items:center;gap:12px;padding-left:18px;border-left:1px solid var(--border-soft)}
+.service-indicator{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:10px;font-weight:550;white-space:nowrap}
+.service-indicator i{position:relative;width:7px;height:7px;border-radius:50%;background:#737985;color:#737985;transition:background-color .2s ease,color .2s ease}
+.service-indicator i::after{content:"";position:absolute;inset:-3px;border:1px solid currentColor;border-radius:50%;opacity:0}
+.service-indicator[data-state="online"] i{background:#55c985;color:#55c985}
+.service-indicator[data-state="offline"] i{background:#e06868;color:#e06868}
+.service-indicator[data-state="online"] i::after,.service-indicator[data-state="offline"] i::after{animation:status-pulse 1.8s ease-out infinite}
 #bookmark[aria-pressed="true"]{color:var(--accent)}
 .bookmarks-panel{position:absolute;z-index:1;left:32px;top:50%;transform:translateY(-50%);width:250px;max-height:calc(100dvh - 150px);padding:15px;border:1px solid var(--border-soft);border-radius:13px;background:var(--panel);box-shadow:0 18px 50px var(--shadow);text-align:left;overflow:hidden}
 .bookmarks-panel>header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:2px 3px 12px;color:var(--muted);font-size:10px;font-weight:650;letter-spacing:1.7px;text-transform:uppercase}
@@ -49,8 +57,10 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
 .bookmark-row:hover .bookmark-delete,.bookmark-row:focus-within .bookmark-delete{opacity:1;transform:translateX(0)}
 #bookmarks-empty{margin:4px 3px 2px;color:var(--muted);font-size:11px;line-height:1.5}
 @keyframes toolbar-hint-in{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:translateX(0)}}
+@keyframes status-pulse{0%{opacity:.55;transform:scale(.65)}70%,100%{opacity:0;transform:scale(1.55)}}
 @media(max-width:1050px) and (min-width:701px){.bookmarks-panel{left:20px;width:190px}.hero-content{width:min(calc(100% - 440px),620px)}}
 @media(max-width:700px){.hero{justify-content:flex-start;flex-direction:column;padding:46px 18px 110px;gap:34px}.hero-content{order:1;width:100%;margin-top:0}.bookmarks-panel{position:static;order:2;transform:none;width:min(100%,620px);max-height:300px}.bookmarks-panel #bookmarks-list{max-height:220px}}
 @media(hover:none){.bookmark-delete{opacity:1;transform:none}}
-@media(max-width:600px){#toolbar{gap:3px;padding-inline:7px}#toolbar button,.tool{min-width:34px;padding-inline:6px}#toolbar-hint{right:12px;top:12px}}
-@media(prefers-reduced-motion:reduce){body,button,input,select,#nav,#toolbar,.chat-room>form{transition:none}#toolbar-hint{animation-duration:.01ms}}
+@media(max-width:600px){#nav{padding-inline:12px}.nav-left{gap:10px}.brand{gap:7px}.service-status{gap:7px;padding-left:10px}.service-indicator{gap:4px;font-size:9px}nav{gap:1px}nav a{padding-inline:7px}#toolbar{gap:3px;padding-inline:7px}#toolbar button,.tool{min-width:34px;padding-inline:6px}#toolbar-hint{right:12px;top:12px}}
+@media(max-width:400px){.brand{font-size:0}.brand img{width:25px;height:25px}.service-status{border-left:0;padding-left:0}}
+@media(prefers-reduced-motion:reduce){body,button,input,select,#nav,#toolbar,.chat-room>form{transition:none}#toolbar-hint,.service-indicator i::after{animation-duration:.01ms}}

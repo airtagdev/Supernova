@@ -92,7 +92,7 @@ await app.register(serveStatic, { root: fileURLToPath(new URL('./public/', impor
 for (const [prefix, root] of [['/scram/', scramjetPath], ['/uv/', uvPath], ['/libcurl/', libcurlPath], ['/baremux/', baremuxPath]]) {
   await app.register(serveStatic, { root, prefix, decorateReply: false, maxAge: '1h' });
 }
-app.get('/health', async () => ({ status: 'ok' }));
+app.get('/health', async () => ({ status: 'ok', services: { proxy: true, chat: true } }));
 app.setNotFoundHandler((request, reply) => reply.code(404).send({ error: 'Not found' }));
 const port = Number(process.env.PORT || 8080);
 await app.listen({ host: '0.0.0.0', port });

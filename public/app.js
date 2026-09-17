@@ -25,8 +25,37 @@ try {
   const stored = JSON.parse(localStorage.getItem('supernova.bookmarks') || '[]');
   if (Array.isArray(stored)) bookmarks = stored.filter(item => item && typeof item.title === 'string' && typeof item.url === 'string' && /^https?:\/\//.test(item.url)).slice(0, 100);
 } catch {}
-let scramjetProxy, scramjetInitializing, ultravioletInitializing, transportInitializing, currentFrame, activeUrl, activeLabel = '', localGame = false, activeGame = false, games = [], navigationId = 0, loadTimer, gameCollapseTimer;
+let scramjetProxy, scramjetInitializing, ultravioletInitializing, transportInitializing, currentFrame, activeUrl, activeLabel = '', localGame = false, activeGame = false, games = [], gamesPromise, navigationId = 0, loadTimer, gameCollapseTimer;
 function notify(message, retry = false) { $('notice-text').textContent = message; $('retry').hidden = !retry; $('notice').hidden = false; }
+let serviceStatusTimer;
+function setServiceStatus(service, online) {
+  const node = $(`${service}-status`); if (!node) return;
+  node.dataset.state = online ? 'online' : 'offline';
+  node.title = `${service[0].toUpperCase() + service.slice(1)} ${online ? 'online' : 'offline'}`;
+  node.setAttribute('aria-label', node.title);
+}
+async function checkServiceStatus() {
+  clearTimeout(serviceStatusTimer);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try {
+    if (!navigator.onLine) throw new Error('Offline');
+    const response = await fetch('/health', { cache: 'no-store', signal: controller.signal });
+    if (!response.ok) throw new Error('Unavailable');
+    const result = await response.json();
+    setServiceStatus('proxy', result.services?.proxy !== false);
+    setServiceStatus('chat', result.services?.chat !== false);
+  } catch { setServiceStatus('proxy', false); setServiceStatus('chat', false); }
+  finally {
+    clearTimeout(timeout);
+    if (document.visibilityState === 'visible') serviceStatusTimer = setTimeout(checkServiceStatus, 60000);
+  }
+}
+const beginStatusChecks = () => checkServiceStatus();
+if ('requestIdleCallback' in window) requestIdleCallback(beginStatusChecks, { timeout: 1500 }); else setTimeout(beginStatusChecks, 500);
+document.addEventListener('visibilitychange', () => { clearTimeout(serviceStatusTimer); if (document.visibilityState === 'visible') checkServiceStatus(); });
+window.addEventListener('offline', () => { clearTimeout(serviceStatusTimer); setServiceStatus('proxy', false); setServiceStatus('chat', false); });
+window.addEventListener('online', checkServiceStatus);
 function save() { try { localStorage.setItem('supernova.settings', JSON.stringify(settings)); $('saved').textContent = 'Saved on this browser'; } catch { notify('Your browser could not save these settings.'); } }
 function saveBookmarks() {
   try { localStorage.setItem('supernova.bookmarks', JSON.stringify(bookmarks)); }
@@ -207,6 +236,7 @@ function route() {
   if (selected !== 'chat') leaveChat();
   $('viewer').hidden = true; $('nav').hidden = false; $('notice').hidden = true;
   for (const id of ['home','games','chat','settings']) $(id).hidden = id !== selected;
+  if (selected === 'games') loadGames();
   document.querySelectorAll('nav a').forEach(link => { if (link.hash === '#' + selected) link.setAttribute('aria-current','page'); else link.removeAttribute('aria-current'); });
 }
 window.addEventListener('hashchange', route); route(); openChangelog();
@@ -318,21 +348,27 @@ $('reload').onclick = () => {
 };
 function renderGames() {
   const query = $('filter').value.trim().toLowerCase(); const visible = games.filter(game => game.name.toLowerCase().includes(query));
-  $('game-grid').replaceChildren(); $('empty').hidden = visible.length > 0;
+  const fragment = document.createDocumentFragment(); $('empty').hidden = visible.length > 0;
   $('empty').textContent = games.length ? 'No games match your search.' : 'Your collection is ready for its first game.';
   for (const game of visible) {
     const button = document.createElement('button'); button.className = 'game';
-    const img = document.createElement('img'); img.alt = ''; img.loading = 'lazy'; img.referrerPolicy = 'no-referrer'; img.crossOrigin = 'anonymous'; img.src = game.icon; img.onerror = () => { img.onerror = null; img.removeAttribute('crossorigin'); img.src = '/icons/star.svg'; };
+    const img = document.createElement('img'); img.alt = ''; img.loading = 'lazy'; img.fetchPriority = 'low'; img.referrerPolicy = 'no-referrer'; img.crossOrigin = 'anonymous'; img.src = game.icon; img.onerror = () => { img.onerror = null; img.removeAttribute('crossorigin'); img.src = '/icons/star.svg'; };
     const label = document.createElement('span'); label.textContent = game.name;
     button.append(img, label); button.onclick = () => { try { const target = gameTarget(game.link, location.origin); openContent(target.url, target.local, true, game.name); } catch (error) { notify(error.message); } };
-    $('game-grid').append(button);
+    fragment.append(button);
   }
+  $('game-grid').replaceChildren(fragment);
 }
 $('filter').addEventListener('input', renderGames);
-fetch('/games.json?v=0.1.14').then(response => { if (!response.ok) throw new Error(); return response.json(); }).then(data => {
-  if (!Array.isArray(data) || data.some(game => !game || !['name','icon','link'].every(key => typeof game[key] === 'string' && game[key].trim()))) throw new Error();
-  games = data; renderGames();
-}).catch(() => { $('empty').textContent = 'The game collection could not be loaded. Please check games.json and reload.'; });
+function loadGames() {
+  if (gamesPromise) return gamesPromise;
+  $('empty').hidden = false; $('empty').textContent = 'Loading your collection…';
+  gamesPromise = fetch('/games.json?v=0.1.16').then(response => { if (!response.ok) throw new Error(); return response.json(); }).then(data => {
+    if (!Array.isArray(data) || data.some(game => !game || !['name','icon','link'].every(key => typeof game[key] === 'string' && game[key].trim()))) throw new Error();
+    games = data; renderGames();
+  }).catch(() => { gamesPromise = null; $('empty').hidden = false; $('empty').textContent = 'The game collection could not be loaded. Please reload and try again.'; });
+  return gamesPromise;
+}
 try {
   const reopen = JSON.parse(sessionStorage.getItem('supernova.reopen') || 'null');
   sessionStorage.removeItem('supernova.reopen');
