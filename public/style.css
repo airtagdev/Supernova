@@ -2,9 +2,9 @@
 @media(prefers-reduced-motion:reduce){.changelog-backdrop,.changelog-card,.changelog-modal.is-closing .changelog-backdrop,.changelog-modal.is-closing .changelog-card{animation-duration:.01ms}}
 
 /* Theme system */
-:root,[data-theme="graphite"]{--bg:#111214;--surface:#1a1c20;--surface-strong:#202228;--surface-soft:#191b1f;--border:#30333a;--border-soft:#292c32;--text:#ebedf1;--muted:#9096a2;--accent:#dce2ed;--accent-text:#212630;--focus:#97aed9;--toolbar:#17191d;--shadow:#0005}
-[data-theme="midnight"]{--bg:#0c1220;--surface:#121b2d;--surface-strong:#1a2840;--surface-soft:#101929;--border:#293956;--border-soft:#22314b;--text:#edf4ff;--muted:#8fa1bd;--accent:#91b8ff;--accent-text:#0b1930;--focus:#74a7ff;--toolbar:#0f1828;--shadow:#02071380}
-[data-theme="obsidian"]{--bg:#050506;--surface:#101011;--surface-strong:#1b1b1d;--surface-soft:#0c0c0d;--border:#323235;--border-soft:#242426;--text:#f4f4f5;--muted:#949499;--accent:#f0f0f2;--accent-text:#101012;--focus:#b9b9c2;--toolbar:#09090a;--shadow:#000a}
+:root,[data-theme="graphite"]{--bg:#111214;--panel:#0c0d0f;--surface:#1a1c20;--surface-strong:#202228;--surface-soft:#191b1f;--border:#30333a;--border-soft:#292c32;--text:#ebedf1;--muted:#9096a2;--accent:#dce2ed;--accent-text:#212630;--focus:#97aed9;--toolbar:#17191d;--shadow:#0005}
+[data-theme="midnight"]{--bg:#0c1220;--panel:#070c15;--surface:#121b2d;--surface-strong:#1a2840;--surface-soft:#101929;--border:#293956;--border-soft:#22314b;--text:#edf4ff;--muted:#8fa1bd;--accent:#91b8ff;--accent-text:#0b1930;--focus:#74a7ff;--toolbar:#0f1828;--shadow:#02071380}
+[data-theme="obsidian"]{--bg:#050506;--panel:#000;--surface:#101011;--surface-strong:#1b1b1d;--surface-soft:#0c0c0d;--border:#323235;--border-soft:#242426;--text:#f4f4f5;--muted:#949499;--accent:#f0f0f2;--accent-text:#101012;--focus:#b9b9c2;--toolbar:#09090a;--shadow:#000a}
 html,body{background:var(--bg);color:var(--text)}
 body,button,input,select,#nav,#toolbar,.chat-room>form{transition:background-color .2s ease,border-color .2s ease,color .2s ease}
 button,input,select{background:var(--surface);border-color:var(--border);color:var(--text)}
@@ -36,6 +36,21 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
 #toolbar-hint span,#toolbar-hint small{display:block;margin:0}
 #toolbar-hint span{font-size:12px;font-weight:600}
 #toolbar-hint small{margin-top:3px;color:var(--muted);font-size:10px}
+#bookmark[aria-pressed="true"]{color:var(--accent)}
+.bookmarks-panel{position:absolute;z-index:1;left:32px;top:50%;transform:translateY(-50%);width:250px;max-height:calc(100dvh - 150px);padding:15px;border:1px solid var(--border-soft);border-radius:13px;background:var(--panel);box-shadow:0 18px 50px var(--shadow);text-align:left;overflow:hidden}
+.bookmarks-panel>header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:2px 3px 12px;color:var(--muted);font-size:10px;font-weight:650;letter-spacing:1.7px;text-transform:uppercase}
+.bookmarks-panel>header strong{min-width:20px;padding:3px 6px;border-radius:999px;background:var(--surface-strong);color:var(--text);font-size:9px;text-align:center;letter-spacing:0}
+#bookmarks-list{display:flex;flex-direction:column;gap:6px;max-height:calc(100dvh - 220px);overflow-y:auto;scrollbar-color:var(--border) transparent}
+.bookmark-row{position:relative;display:flex;align-items:center;border:1px solid var(--border-soft);border-radius:8px;background:var(--surface-soft);overflow:hidden}
+.bookmark-open{width:100%;min-width:0;padding:10px 39px 10px 11px;border:0;border-radius:0;background:transparent;color:var(--text);font-size:11px;line-height:1.35;text-align:left;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+.bookmark-delete{position:absolute;right:5px;width:29px;height:29px;padding:6px;border:0;background:var(--surface-strong);color:var(--muted);opacity:0;transform:translateX(5px);transition:opacity .15s ease,transform .15s ease,color .15s ease}
+.bookmark-delete svg{display:block;width:16px;height:16px;fill:currentColor}
+.bookmark-delete:hover{color:#ff9b9b;background:var(--surface-strong)}
+.bookmark-row:hover .bookmark-delete,.bookmark-row:focus-within .bookmark-delete{opacity:1;transform:translateX(0)}
+#bookmarks-empty{margin:4px 3px 2px;color:var(--muted);font-size:11px;line-height:1.5}
 @keyframes toolbar-hint-in{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:translateX(0)}}
+@media(max-width:1050px) and (min-width:701px){.bookmarks-panel{left:20px;width:190px}.hero-content{width:min(calc(100% - 440px),620px)}}
+@media(max-width:700px){.hero{justify-content:flex-start;flex-direction:column;padding:46px 18px 110px;gap:34px}.hero-content{order:1;width:100%;margin-top:0}.bookmarks-panel{position:static;order:2;transform:none;width:min(100%,620px);max-height:300px}.bookmarks-panel #bookmarks-list{max-height:220px}}
+@media(hover:none){.bookmark-delete{opacity:1;transform:none}}
 @media(max-width:600px){#toolbar{gap:3px;padding-inline:7px}#toolbar button,.tool{min-width:34px;padding-inline:6px}#toolbar-hint{right:12px;top:12px}}
 @media(prefers-reduced-motion:reduce){body,button,input,select,#nav,#toolbar,.chat-room>form{transition:none}#toolbar-hint{animation-duration:.01ms}}

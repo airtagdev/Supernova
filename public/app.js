@@ -20,9 +20,51 @@ if (!themes.has(settings.theme)) settings.theme = defaults.theme;
 if (!proxyEngines.has(settings.proxyEngine)) settings.proxyEngine = defaults.proxyEngine;
 if (typeof settings.title !== 'string') settings.title = '';
 if (typeof settings.icon !== 'string' || !/^data:image\/(png|jpeg|webp|x-icon|vnd.microsoft.icon);base64,/.test(settings.icon)) settings.icon = '';
-let scramjetProxy, scramjetInitializing, ultravioletInitializing, transportInitializing, currentFrame, activeUrl, localGame = false, activeGame = false, games = [], navigationId = 0, loadTimer, gameCollapseTimer;
+let bookmarks = [];
+try {
+  const stored = JSON.parse(localStorage.getItem('supernova.bookmarks') || '[]');
+  if (Array.isArray(stored)) bookmarks = stored.filter(item => item && typeof item.title === 'string' && typeof item.url === 'string' && /^https?:\/\//.test(item.url)).slice(0, 100);
+} catch {}
+let scramjetProxy, scramjetInitializing, ultravioletInitializing, transportInitializing, currentFrame, activeUrl, activeLabel = '', localGame = false, activeGame = false, games = [], navigationId = 0, loadTimer, gameCollapseTimer;
 function notify(message, retry = false) { $('notice-text').textContent = message; $('retry').hidden = !retry; $('notice').hidden = false; }
 function save() { try { localStorage.setItem('supernova.settings', JSON.stringify(settings)); $('saved').textContent = 'Saved on this browser'; } catch { notify('Your browser could not save these settings.'); } }
+function saveBookmarks() {
+  try { localStorage.setItem('supernova.bookmarks', JSON.stringify(bookmarks)); }
+  catch { notify('Your browser could not save this bookmark.'); }
+}
+function bookmarkTitle() {
+  if (activeLabel) return activeLabel;
+  try {
+    const title = currentFrame?.frame.contentDocument?.title?.replace(/\s+/g, ' ').trim();
+    if (title) return title.slice(0, 80);
+  } catch {}
+  try { return new URL(activeUrl).hostname.replace(/^www\./, '') || 'Saved page'; }
+  catch { return 'Saved page'; }
+}
+function bookmarkIndex(url = activeUrl) { return bookmarks.findIndex(item => item.url === url); }
+function updateBookmarkButton() {
+  const button = $('bookmark'); if (!button) return;
+  const saved = Boolean(activeUrl) && bookmarkIndex() !== -1;
+  button.textContent = saved ? '★' : '☆';
+  button.setAttribute('aria-pressed', String(saved));
+  button.setAttribute('aria-label', saved ? 'Remove bookmark' : 'Add bookmark');
+  button.title = saved ? 'Remove bookmark' : 'Add bookmark';
+}
+function renderBookmarks() {
+  const list = $('bookmarks-list'); if (!list) return;
+  list.replaceChildren();
+  $('bookmarks-empty').hidden = bookmarks.length > 0;
+  $('bookmarks-count').textContent = bookmarks.length ? String(bookmarks.length) : '';
+  for (const item of bookmarks) {
+    const row = document.createElement('div'); row.className = 'bookmark-row';
+    const open = document.createElement('button'); open.className = 'bookmark-open'; open.textContent = item.title; open.title = item.title;
+    open.addEventListener('click', () => openContent(item.url, Boolean(item.local), Boolean(item.game), item.title));
+    const remove = document.createElement('button'); remove.className = 'bookmark-delete'; remove.type = 'button'; remove.setAttribute('aria-label', `Delete ${item.title}`); remove.title = `Delete ${item.title}`;
+    remove.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1 2h4v2H4V5h4l1-2Zm-2 6h10l-1 11H8L7 9Zm3 2v7h2v-7h-2Zm4 0v7h2v-7h-2Z"/></svg>';
+    remove.addEventListener('click', () => { bookmarks = bookmarks.filter(bookmark => bookmark.id !== item.id); saveBookmarks(); renderBookmarks(); updateBookmarkButton(); });
+    row.append(open, remove); list.append(row);
+  }
+}
 function appearance() { const preset = tabPresets[settings.preset]; document.title = preset?.title || settings.title.trim() || 'Supernova'; $('favicon').href = preset?.icon || settings.icon || '/icons/star.svg'; $('icon-preview').src = $('favicon').href; }
 function applyTheme() { document.documentElement.dataset.theme = settings.theme; }
 appearance();
@@ -53,6 +95,15 @@ function collapse(value, showHint = false) { $('toolbar').hidden = value; $('exp
 $('collapse').onclick = () => { collapse(true); $('expand').focus(); };
 $('expand').onclick = () => { collapse(false); $('collapse').focus(); };
 $('toolbar-hint')?.addEventListener('click', () => { collapse(false); $('collapse').focus(); });
+$('bookmark')?.addEventListener('click', () => {
+  if (!activeUrl) return;
+  const index = bookmarkIndex();
+  if (index !== -1) bookmarks.splice(index, 1);
+  else bookmarks.unshift({ id: crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`, title: bookmarkTitle(), url: activeUrl, local: localGame, game: activeGame });
+  bookmarks = bookmarks.slice(0, 100);
+  saveBookmarks(); renderBookmarks(); updateBookmarkButton();
+});
+renderBookmarks();
 const changelog = $('changelog-modal');
 const showChangelogOnLoad = !location.hash || location.hash === '#home';
 let changelogDismissed = false;
@@ -220,14 +271,14 @@ async function repairProxy() {
   scramjetProxy = null; scramjetInitializing = null; ultravioletInitializing = null; transportInitializing = null;
   const registrations = await navigator.serviceWorker.getRegistrations();
   await Promise.all(registrations.filter(registration => registration.scope === `${location.origin}/` || registration.scope === `${location.origin}/uv/service/`).map(registration => registration.unregister()));
-  sessionStorage.setItem('supernova.reopen', JSON.stringify({ url: activeUrl, local: localGame, game: activeGame }));
+  sessionStorage.setItem('supernova.reopen', JSON.stringify({ url: activeUrl, label: activeLabel, local: localGame, game: activeGame }));
   location.reload();
 }
-async function openContent(url, local = false, game = false) {
-  cleanup(); const token = navigationId; activeUrl = url; localGame = local; activeGame = game;
+async function openContent(url, local = false, game = false, label = '') {
+  cleanup(); const token = navigationId; activeUrl = url; activeLabel = typeof label === 'string' ? label.trim().slice(0, 80) : ''; localGame = local; activeGame = game;
   location.hash = 'browse'; $('nav').hidden = true;
   for (const id of ['home','games','chat','settings']) $(id).hidden = true;
-  $('viewer').hidden = false; collapse(false); $('address').value = url;
+  $('viewer').hidden = false; collapse(false); $('address').value = url; updateBookmarkButton();
   notify(local ? 'Opening game…' : 'Connecting…');
   loadTimer = setTimeout(() => { if (token === navigationId) notify('This page is taking longer than expected. You can retry or try another website.', true); }, 20000);
   try {
@@ -239,7 +290,7 @@ async function openContent(url, local = false, game = false) {
     const frame = currentFrame.frame;
     frame.title = local ? 'Game' : 'Proxied website';
     frame.setAttribute('allow', 'fullscreen; autoplay; gamepad');
-    frame.addEventListener('load', () => { clearTimeout(loadTimer); clearTimeout(gameCollapseTimer); $('notice').hidden = true; if (game) collapse(true, true); }, { once: true });
+    frame.addEventListener('load', () => { clearTimeout(loadTimer); clearTimeout(gameCollapseTimer); $('notice').hidden = true; updateBookmarkButton(); if (game) collapse(true, true); }, { once: true });
     $('frame-host').replaceChildren(frame);
     if (game) gameCollapseTimer = setTimeout(() => { if (token === navigationId) collapse(true, true); }, 1800);
     if (local) frame.src = url; else if (currentFrame.go) currentFrame.go(url); else frame.src = currentFrame.url;
@@ -250,8 +301,8 @@ for (const [form, input] of [['search','query'], ['address-form','address']]) $(
 });
 $('retry').onclick = async () => {
   if (!activeUrl) return;
-  if (localGame) return openContent(activeUrl, true, activeGame);
-  try { await repairProxy(); } catch { openContent(activeUrl, false, activeGame); }
+  if (localGame) return openContent(activeUrl, true, activeGame, activeLabel);
+  try { await repairProxy(); } catch { openContent(activeUrl, false, activeGame, activeLabel); }
 };
 $('back')?.addEventListener('click', () => {
   try { currentFrame?.frame.contentWindow.history.back(); }
@@ -262,8 +313,8 @@ $('forward')?.addEventListener('click', () => {
   catch { notify('This page cannot go forward yet.'); }
 });
 $('reload').onclick = () => {
-  try { if (currentFrame?.reload) currentFrame.reload(); else if (currentFrame) currentFrame.frame.contentWindow.location.reload(); else if (activeUrl) openContent(activeUrl, localGame, activeGame); }
-  catch { openContent(activeUrl, localGame, activeGame); }
+  try { if (currentFrame?.reload) currentFrame.reload(); else if (currentFrame) currentFrame.frame.contentWindow.location.reload(); else if (activeUrl) openContent(activeUrl, localGame, activeGame, activeLabel); }
+  catch { openContent(activeUrl, localGame, activeGame, activeLabel); }
 };
 function renderGames() {
   const query = $('filter').value.trim().toLowerCase(); const visible = games.filter(game => game.name.toLowerCase().includes(query));
@@ -273,7 +324,7 @@ function renderGames() {
     const button = document.createElement('button'); button.className = 'game';
     const img = document.createElement('img'); img.alt = ''; img.loading = 'lazy'; img.referrerPolicy = 'no-referrer'; img.crossOrigin = 'anonymous'; img.src = game.icon; img.onerror = () => { img.onerror = null; img.removeAttribute('crossorigin'); img.src = '/icons/star.svg'; };
     const label = document.createElement('span'); label.textContent = game.name;
-    button.append(img, label); button.onclick = () => { try { const target = gameTarget(game.link, location.origin); openContent(target.url, target.local, true); } catch (error) { notify(error.message); } };
+    button.append(img, label); button.onclick = () => { try { const target = gameTarget(game.link, location.origin); openContent(target.url, target.local, true, game.name); } catch (error) { notify(error.message); } };
     $('game-grid').append(button);
   }
 }
@@ -285,5 +336,5 @@ fetch('/games.json?v=0.1.14').then(response => { if (!response.ok) throw new Err
 try {
   const reopen = JSON.parse(sessionStorage.getItem('supernova.reopen') || 'null');
   sessionStorage.removeItem('supernova.reopen');
-  if (reopen?.url && typeof reopen.url === 'string') setTimeout(() => openContent(reopen.url, Boolean(reopen.local), Boolean(reopen.game)));
+  if (reopen?.url && typeof reopen.url === 'string') setTimeout(() => openContent(reopen.url, Boolean(reopen.local), Boolean(reopen.game), typeof reopen.label === 'string' ? reopen.label : ''));
 } catch { sessionStorage.removeItem('supernova.reopen'); }
