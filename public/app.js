@@ -239,7 +239,7 @@ function renderGames() {
   }
 }
 $('filter').addEventListener('input', renderGames);
-fetch('/games.json').then(response => { if (!response.ok) throw new Error(); return response.json(); }).then(data => {
+fetch('/games.json?v=0.1.13').then(response => { if (!response.ok) throw new Error(); return response.json(); }).then(data => {
   if (!Array.isArray(data) || data.some(game => !game || !['name','icon','link'].every(key => typeof game[key] === 'string' && game[key].trim()))) throw new Error();
   games = data; renderGames();
 }).catch(() => { $('empty').textContent = 'The game collection could not be loaded. Please check games.json and reload.'; });
