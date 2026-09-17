@@ -1,6 +1,7 @@
 import { resolveInput, gameTarget, engines } from './resolve.js';
 const $ = id => document.getElementById(id);
-const defaults = { title: '', icon: '', engine: 'duckduckgo', collapsed: false, preset: 'custom' };
+const defaults = { title: '', icon: '', engine: 'duckduckgo', preset: 'custom', theme: 'graphite' };
+const themes = new Set(['graphite', 'midnight', 'obsidian']);
 const tabPresets = {
   classroom: { title: 'Google Classroom', icon: 'https://ssl.gstatic.com/classroom/favicon.png' },
   drive: { title: 'Google Drive', icon: 'https://ssl.gstatic.com/images/branding/product/1x/drive_2020q4_48dp.png' },
@@ -8,20 +9,24 @@ const tabPresets = {
   khan: { title: 'Khan Academy', icon: 'https://www.khanacademy.org/favicon.ico' },
   socrative: { title: 'Socrative', icon: 'https://www.google.com/s2/favicons?domain=socrative.com&sz=128' }
 };
-const serviceWorkerUrl = '/sw.js?v=20260916-1';
+const serviceWorkerUrl = '/sw.js?v=20260916-2';
 let settings;
 try { settings = { ...defaults, ...JSON.parse(localStorage.getItem('supernova.settings') || '{}') }; } catch { settings = { ...defaults }; }
 if (!engines[settings.engine]) settings.engine = defaults.engine;
 if (settings.preset !== 'custom' && !tabPresets[settings.preset]) settings.preset = defaults.preset;
+if (!themes.has(settings.theme)) settings.theme = defaults.theme;
 if (typeof settings.title !== 'string') settings.title = '';
 if (typeof settings.icon !== 'string' || !/^data:image\/(png|jpeg|webp|x-icon|vnd.microsoft.icon);base64,/.test(settings.icon)) settings.icon = '';
-let proxy, initializing, currentFrame, activeUrl, localGame = false, games = [], navigationId = 0, loadTimer;
+let proxy, initializing, currentFrame, activeUrl, localGame = false, activeGame = false, games = [], navigationId = 0, loadTimer, gameCollapseTimer;
 function notify(message, retry = false) { $('notice-text').textContent = message; $('retry').hidden = !retry; $('notice').hidden = false; }
 function save() { try { localStorage.setItem('supernova.settings', JSON.stringify(settings)); $('saved').textContent = 'Saved on this browser'; } catch { notify('Your browser could not save these settings.'); } }
 function appearance() { const preset = tabPresets[settings.preset]; document.title = preset?.title || settings.title.trim() || 'Supernova'; $('favicon').href = preset?.icon || settings.icon || '/icons/star.svg'; $('icon-preview').src = $('favicon').href; }
+function applyTheme() { document.documentElement.dataset.theme = settings.theme; }
 appearance();
+applyTheme();
 const presetSelect = $('tab-preset');
-$('tab-title').value = settings.title; $('engine').value = settings.engine; if (presetSelect) presetSelect.value = settings.preset;
+$('tab-title').value = settings.title; $('engine').value = settings.engine; const themeSelect = $('theme'); if (themeSelect) themeSelect.value = settings.theme; if (presetSelect) presetSelect.value = settings.preset;
+themeSelect?.addEventListener('change', event => { settings.theme = themes.has(event.target.value) ? event.target.value : defaults.theme; applyTheme(); save(); });
 presetSelect?.addEventListener('change', event => { settings.preset = event.target.value; appearance(); save(); });
 $('tab-title').addEventListener('input', event => { settings.preset = 'custom'; if (presetSelect) presetSelect.value = 'custom'; settings.title = event.target.value; appearance(); save(); });
 $('engine').addEventListener('change', event => { settings.engine = event.target.value; save(); });
@@ -30,11 +35,19 @@ $('icon-file').addEventListener('change', async event => {
   if (file.size > 256 * 1024 || !['image/png','image/jpeg','image/webp','image/x-icon','image/vnd.microsoft.icon'].includes(file.type)) return notify('Choose a PNG, JPG, WebP or ICO smaller than 256 KB.');
   try { const bitmap = await createImageBitmap(file); bitmap.close(); const reader = new FileReader(); reader.onload = () => { settings.preset = 'custom'; if (presetSelect) presetSelect.value = 'custom'; settings.icon = reader.result; appearance(); save(); }; reader.readAsDataURL(file); } catch { notify('This image could not be opened. Try a PNG or WebP.'); }
 });
-$('reset').onclick = () => { settings = { ...defaults }; $('tab-title').value = ''; $('engine').value = settings.engine; if (presetSelect) presetSelect.value = settings.preset; $('icon-file').value = ''; appearance(); save(); };
+$('reset').onclick = () => { settings = { ...defaults }; $('tab-title').value = ''; $('engine').value = settings.engine; if (themeSelect) themeSelect.value = settings.theme; if (presetSelect) presetSelect.value = settings.preset; $('icon-file').value = ''; applyTheme(); appearance(); save(); };
 $('dismiss').onclick = () => $('notice').hidden = true;
-function collapse(value) { settings.collapsed = value; $('toolbar').hidden = value; $('expand').hidden = !value; save(); }
+let toolbarHintTimer;
+function hideToolbarHint() { clearTimeout(toolbarHintTimer); const hint = $('toolbar-hint'); if (hint) hint.hidden = true; }
+function showToolbarHint() {
+  const hint = $('toolbar-hint'); if (!hint) return;
+  clearTimeout(toolbarHintTimer); hint.hidden = false;
+  toolbarHintTimer = setTimeout(hideToolbarHint, 3000);
+}
+function collapse(value, showHint = false) { $('toolbar').hidden = value; $('expand').hidden = !value; if (value && showHint) showToolbarHint(); else hideToolbarHint(); }
 $('collapse').onclick = () => { collapse(true); $('expand').focus(); };
 $('expand').onclick = () => { collapse(false); $('collapse').focus(); };
+$('toolbar-hint')?.addEventListener('click', () => { collapse(false); $('collapse').focus(); });
 const changelog = $('changelog-modal');
 const showChangelogOnLoad = !location.hash || location.hash === '#home';
 let changelogDismissed = false;
@@ -62,7 +75,6 @@ const chatClientId = sessionStorage.getItem('supernova.chat.id') || (crypto.rand
 sessionStorage.setItem('supernova.chat.id', chatClientId);
 let chatStream = null;
 function appendChatMessage(message) {
-  if (!$('chat-messages')) return;
   const item = document.createElement('article');
   if (message.type === 'system') {
     item.className = 'chat-message system';
@@ -81,12 +93,10 @@ function appendChatMessage(message) {
 }
 function leaveChat(showGate = true) {
   chatStream?.close(); chatStream = null;
-  if (!$('chat-room')) return;
   $('chat-room').hidden = true;
   if (showGate) $('chat-gate').hidden = false;
   $('chat-presence').textContent = 'Offline';
 }
-if ($('chat-join')) {
 $('chat-join').addEventListener('submit', event => {
   event.preventDefault();
   const name = $('chat-name').value.replace(/\s+/g, ' ').trim();
@@ -132,8 +142,7 @@ $('chat-send').addEventListener('submit', async event => {
   finally { button.disabled = false; input.focus(); }
 });
 $('chat-leave').addEventListener('click', () => { leaveChat(); $('chat-name').focus(); });
-}
-function cleanup() { navigationId++; clearTimeout(loadTimer); currentFrame?.frame.remove(); currentFrame = null; $('frame-host').replaceChildren(); }
+function cleanup() { navigationId++; clearTimeout(loadTimer); clearTimeout(gameCollapseTimer); hideToolbarHint(); currentFrame?.frame.remove(); currentFrame = null; $('frame-host').replaceChildren(); }
 function route() {
   const page = location.hash.slice(1) || 'home';
   if (page === 'browse' && activeUrl) return;
@@ -141,7 +150,7 @@ function route() {
   if (selected !== 'home') closeChangelog(true);
   if (selected !== 'chat') leaveChat();
   $('viewer').hidden = true; $('nav').hidden = false; $('notice').hidden = true;
-  for (const id of ['home','games','chat','settings']) { const pageElement = $(id); if (pageElement) pageElement.hidden = id !== selected; }
+  for (const id of ['home','games','chat','settings']) $(id).hidden = id !== selected;
   document.querySelectorAll('nav a').forEach(link => { if (link.hash === '#' + selected) link.setAttribute('aria-current','page'); else link.removeAttribute('aria-current'); });
 }
 window.addEventListener('hashchange', route); route(); openChangelog();
@@ -175,14 +184,14 @@ async function repairProxy() {
   proxy = null; initializing = null;
   const registrations = await navigator.serviceWorker.getRegistrations();
   await Promise.all(registrations.filter(registration => registration.scope === `${location.origin}/`).map(registration => registration.unregister()));
-  sessionStorage.setItem('supernova.reopen', JSON.stringify({ url: activeUrl, local: localGame }));
+  sessionStorage.setItem('supernova.reopen', JSON.stringify({ url: activeUrl, local: localGame, game: activeGame }));
   location.reload();
 }
-async function openContent(url, local = false) {
-  cleanup(); const token = navigationId; activeUrl = url; localGame = local;
+async function openContent(url, local = false, game = false) {
+  cleanup(); const token = navigationId; activeUrl = url; localGame = local; activeGame = game;
   location.hash = 'browse'; $('nav').hidden = true;
-  for (const id of ['home','games','chat','settings']) { const pageElement = $(id); if (pageElement) pageElement.hidden = true; }
-  $('viewer').hidden = false; collapse(Boolean(settings.collapsed)); $('address').value = url;
+  for (const id of ['home','games','chat','settings']) $(id).hidden = true;
+  $('viewer').hidden = false; collapse(false); $('address').value = url;
   notify(local ? 'Opening game…' : 'Connecting…');
   loadTimer = setTimeout(() => { if (token === navigationId) notify('This page is taking longer than expected. You can retry or try another website.', true); }, 20000);
   try {
@@ -191,8 +200,9 @@ async function openContent(url, local = false) {
     const frame = currentFrame.frame;
     frame.title = local ? 'Game' : 'Proxied website';
     frame.setAttribute('allow', 'fullscreen; autoplay; gamepad');
-    frame.addEventListener('load', () => { clearTimeout(loadTimer); $('notice').hidden = true; });
+    frame.addEventListener('load', () => { clearTimeout(loadTimer); clearTimeout(gameCollapseTimer); $('notice').hidden = true; if (game) collapse(true, true); }, { once: true });
     $('frame-host').replaceChildren(frame);
+    if (game) gameCollapseTimer = setTimeout(() => { if (token === navigationId) collapse(true, true); }, 1800);
     if (local) frame.src = url; else currentFrame.go(url);
   } catch (error) { if (token === navigationId) { clearTimeout(loadTimer); notify(error.message || 'Unable to open this page.', true); } }
 }
@@ -201,9 +211,17 @@ for (const [form, input] of [['search','query'], ['address-form','address']]) $(
 });
 $('retry').onclick = async () => {
   if (!activeUrl) return;
-  if (localGame) return openContent(activeUrl, true);
+  if (localGame) return openContent(activeUrl, true, activeGame);
   try { await repairProxy(); } catch { openContent(activeUrl, false); }
 };
+$('back')?.addEventListener('click', () => {
+  try { currentFrame?.frame.contentWindow.history.back(); }
+  catch { notify('This page cannot go back yet.'); }
+});
+$('forward')?.addEventListener('click', () => {
+  try { currentFrame?.frame.contentWindow.history.forward(); }
+  catch { notify('This page cannot go forward yet.'); }
+});
 $('reload').onclick = () => {
   try { if (currentFrame?.reload) currentFrame.reload(); else if (currentFrame) currentFrame.frame.contentWindow.location.reload(); else if (activeUrl) openContent(activeUrl, localGame); }
   catch { openContent(activeUrl, localGame); }
@@ -216,7 +234,7 @@ function renderGames() {
     const button = document.createElement('button'); button.className = 'game';
     const img = document.createElement('img'); img.alt = ''; img.loading = 'lazy'; img.referrerPolicy = 'no-referrer'; img.crossOrigin = 'anonymous'; img.src = game.icon; img.onerror = () => { img.onerror = null; img.removeAttribute('crossorigin'); img.src = '/icons/star.svg'; };
     const label = document.createElement('span'); label.textContent = game.name;
-    button.append(img, label); button.onclick = () => { try { const target = gameTarget(game.link, location.origin); openContent(target.url, target.local); } catch (error) { notify(error.message); } };
+    button.append(img, label); button.onclick = () => { try { const target = gameTarget(game.link, location.origin); openContent(target.url, target.local, true); } catch (error) { notify(error.message); } };
     $('game-grid').append(button);
   }
 }
@@ -228,5 +246,5 @@ fetch('/games.json').then(response => { if (!response.ok) throw new Error(); ret
 try {
   const reopen = JSON.parse(sessionStorage.getItem('supernova.reopen') || 'null');
   sessionStorage.removeItem('supernova.reopen');
-  if (reopen?.url && typeof reopen.url === 'string') setTimeout(() => openContent(reopen.url, Boolean(reopen.local)));
+  if (reopen?.url && typeof reopen.url === 'string') setTimeout(() => openContent(reopen.url, Boolean(reopen.local), Boolean(reopen.game)));
 } catch { sessionStorage.removeItem('supernova.reopen'); }
