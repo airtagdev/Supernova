@@ -7,6 +7,7 @@ import { server as wisp, logging } from '@mercuryworkshop/wisp-js/server';
 import { scramjetPath } from '@mercuryworkshop/scramjet/path';
 import { libcurlPath } from '@mercuryworkshop/libcurl-transport';
 import { baremuxPath } from '@mercuryworkshop/bare-mux/node';
+import { uvPath } from '@titaniumnetwork-dev/ultraviolet';
 logging.set_level(logging.NONE);
 wisp.options.allow_udp_streams = false;
 const app = Fastify({ serverFactory: handler => createServer((req, res) => {
@@ -88,7 +89,7 @@ app.post('/api/chat/messages', async (request, reply) => {
   return reply.code(202).send({ ok: true });
 });
 await app.register(serveStatic, { root: fileURLToPath(new URL('./public/', import.meta.url)), maxAge: 0 });
-for (const [prefix, root] of [['/scram/', scramjetPath], ['/libcurl/', libcurlPath], ['/baremux/', baremuxPath]]) {
+for (const [prefix, root] of [['/scram/', scramjetPath], ['/uv/', uvPath], ['/libcurl/', libcurlPath], ['/baremux/', baremuxPath]]) {
   await app.register(serveStatic, { root, prefix, decorateReply: false, maxAge: '1h' });
 }
 app.get('/health', async () => ({ status: 'ok' }));

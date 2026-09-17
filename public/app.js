@@ -1,7 +1,8 @@
 import { resolveInput, gameTarget, engines } from './resolve.js';
 const $ = id => document.getElementById(id);
-const defaults = { title: '', icon: '', engine: 'duckduckgo', preset: 'custom', theme: 'graphite' };
+const defaults = { title: '', icon: '', engine: 'duckduckgo', preset: 'custom', theme: 'graphite', proxyEngine: 'scramjet' };
 const themes = new Set(['graphite', 'midnight', 'obsidian']);
+const proxyEngines = new Set(['scramjet', 'ultraviolet']);
 const tabPresets = {
   classroom: { title: 'Google Classroom', icon: 'https://ssl.gstatic.com/classroom/favicon.png' },
   drive: { title: 'Google Drive', icon: 'https://ssl.gstatic.com/images/branding/product/1x/drive_2020q4_48dp.png' },
@@ -9,15 +10,17 @@ const tabPresets = {
   khan: { title: 'Khan Academy', icon: 'https://www.khanacademy.org/favicon.ico' },
   socrative: { title: 'Socrative', icon: 'https://www.google.com/s2/favicons?domain=socrative.com&sz=128' }
 };
-const serviceWorkerUrl = '/sw.js?v=20260916-2';
+const serviceWorkerUrl = '/sw.js?v=20260916-3';
+const ultravioletWorkerUrl = '/uv-sw.js?v=20260916-1';
 let settings;
 try { settings = { ...defaults, ...JSON.parse(localStorage.getItem('supernova.settings') || '{}') }; } catch { settings = { ...defaults }; }
 if (!engines[settings.engine]) settings.engine = defaults.engine;
 if (settings.preset !== 'custom' && !tabPresets[settings.preset]) settings.preset = defaults.preset;
 if (!themes.has(settings.theme)) settings.theme = defaults.theme;
+if (!proxyEngines.has(settings.proxyEngine)) settings.proxyEngine = defaults.proxyEngine;
 if (typeof settings.title !== 'string') settings.title = '';
 if (typeof settings.icon !== 'string' || !/^data:image\/(png|jpeg|webp|x-icon|vnd.microsoft.icon);base64,/.test(settings.icon)) settings.icon = '';
-let proxy, initializing, currentFrame, activeUrl, localGame = false, activeGame = false, games = [], navigationId = 0, loadTimer, gameCollapseTimer;
+let scramjetProxy, scramjetInitializing, ultravioletInitializing, transportInitializing, currentFrame, activeUrl, localGame = false, activeGame = false, games = [], navigationId = 0, loadTimer, gameCollapseTimer;
 function notify(message, retry = false) { $('notice-text').textContent = message; $('retry').hidden = !retry; $('notice').hidden = false; }
 function save() { try { localStorage.setItem('supernova.settings', JSON.stringify(settings)); $('saved').textContent = 'Saved on this browser'; } catch { notify('Your browser could not save these settings.'); } }
 function appearance() { const preset = tabPresets[settings.preset]; document.title = preset?.title || settings.title.trim() || 'Supernova'; $('favicon').href = preset?.icon || settings.icon || '/icons/star.svg'; $('icon-preview').src = $('favicon').href; }
@@ -25,17 +28,19 @@ function applyTheme() { document.documentElement.dataset.theme = settings.theme;
 appearance();
 applyTheme();
 const presetSelect = $('tab-preset');
-$('tab-title').value = settings.title; $('engine').value = settings.engine; const themeSelect = $('theme'); if (themeSelect) themeSelect.value = settings.theme; if (presetSelect) presetSelect.value = settings.preset;
+const proxySelect = $('proxy-engine');
+$('tab-title').value = settings.title; $('engine').value = settings.engine; if (proxySelect) proxySelect.value = settings.proxyEngine; const themeSelect = $('theme'); if (themeSelect) themeSelect.value = settings.theme; if (presetSelect) presetSelect.value = settings.preset;
 themeSelect?.addEventListener('change', event => { settings.theme = themes.has(event.target.value) ? event.target.value : defaults.theme; applyTheme(); save(); });
 presetSelect?.addEventListener('change', event => { settings.preset = event.target.value; appearance(); save(); });
 $('tab-title').addEventListener('input', event => { settings.preset = 'custom'; if (presetSelect) presetSelect.value = 'custom'; settings.title = event.target.value; appearance(); save(); });
 $('engine').addEventListener('change', event => { settings.engine = event.target.value; save(); });
+proxySelect?.addEventListener('change', event => { settings.proxyEngine = proxyEngines.has(event.target.value) ? event.target.value : defaults.proxyEngine; save(); });
 $('icon-file').addEventListener('change', async event => {
   const file = event.target.files[0]; if (!file) return;
   if (file.size > 256 * 1024 || !['image/png','image/jpeg','image/webp','image/x-icon','image/vnd.microsoft.icon'].includes(file.type)) return notify('Choose a PNG, JPG, WebP or ICO smaller than 256 KB.');
   try { const bitmap = await createImageBitmap(file); bitmap.close(); const reader = new FileReader(); reader.onload = () => { settings.preset = 'custom'; if (presetSelect) presetSelect.value = 'custom'; settings.icon = reader.result; appearance(); save(); }; reader.readAsDataURL(file); } catch { notify('This image could not be opened. Try a PNG or WebP.'); }
 });
-$('reset').onclick = () => { settings = { ...defaults }; $('tab-title').value = ''; $('engine').value = settings.engine; if (themeSelect) themeSelect.value = settings.theme; if (presetSelect) presetSelect.value = settings.preset; $('icon-file').value = ''; applyTheme(); appearance(); save(); };
+$('reset').onclick = () => { settings = { ...defaults }; $('tab-title').value = ''; $('engine').value = settings.engine; if (proxySelect) proxySelect.value = settings.proxyEngine; if (themeSelect) themeSelect.value = settings.theme; if (presetSelect) presetSelect.value = settings.preset; $('icon-file').value = ''; applyTheme(); appearance(); save(); };
 $('dismiss').onclick = () => $('notice').hidden = true;
 let toolbarHintTimer;
 function hideToolbarHint() { clearTimeout(toolbarHintTimer); const hint = $('toolbar-hint'); if (hint) hint.hidden = true; }
@@ -155,13 +160,24 @@ function route() {
 }
 window.addEventListener('hashchange', route); route(); openChangelog();
 function loadScript(src) { return new Promise((resolve,reject) => { const script = document.createElement('script'); script.src = src; script.onload = resolve; script.onerror = () => { script.remove(); reject(new Error('Could not load proxy files. Please retry.')); }; document.head.append(script); }); }
-async function initialize() {
-  if (proxy) return proxy;
-  if (initializing) return initializing;
-  initializing = (async () => {
-    if (!window.isSecureContext || !navigator.serviceWorker) throw new Error('Browsing requires HTTPS or localhost and service worker support.');
-    if (!window.$scramjetLoadController) await loadScript('/scram/scramjet.all.js');
+function requireProxySupport() {
+  if (!window.isSecureContext || !navigator.serviceWorker) throw new Error('Browsing requires HTTPS or localhost and service worker support.');
+}
+async function initializeTransport() {
+  if (transportInitializing) return transportInitializing;
+  transportInitializing = (async () => {
     if (!window.BareMux) await loadScript('/baremux/index.js');
+    const connection = new BareMux.BareMuxConnection('/baremux/worker.js');
+    await connection.setTransport('/libcurl/index.mjs', [{ websocket: `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/wisp/` }]);
+  })();
+  try { return await transportInitializing; } catch (error) { transportInitializing = null; throw error; }
+}
+async function initializeScramjet() {
+  if (scramjetProxy) return scramjetProxy;
+  if (scramjetInitializing) return scramjetInitializing;
+  scramjetInitializing = (async () => {
+    requireProxySupport();
+    if (!window.$scramjetLoadController) await loadScript('/scram/scramjet.all.js');
     const { ScramjetController } = $scramjetLoadController();
     const controller = new ScramjetController({ prefix: '/service/', files: { wasm: '/scram/scramjet.wasm.wasm', all: '/scram/scramjet.all.js', sync: '/scram/scramjet.sync.js' } });
     await controller.init();
@@ -174,16 +190,36 @@ async function initialize() {
         new Promise((_, reject) => setTimeout(() => reject(new Error('The proxy worker did not start. Select Retry to repair it.')), 10000))
       ]);
     }
-    const connection = new BareMux.BareMuxConnection('/baremux/worker.js');
-    await connection.setTransport('/libcurl/index.mjs', [{ websocket: `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/wisp/` }]);
-    proxy = controller; return controller;
+    await initializeTransport();
+    scramjetProxy = controller; return controller;
   })();
-  try { return await initializing; } finally { initializing = null; }
+  try { return await scramjetInitializing; } finally { scramjetInitializing = null; }
+}
+async function initializeUltraviolet() {
+  if (ultravioletInitializing) return ultravioletInitializing;
+  ultravioletInitializing = (async () => {
+    requireProxySupport();
+    if (!window.Ultraviolet) await loadScript('/uv/uv.bundle.js');
+    if (!window.__uv$config) await loadScript('/uv-config.js');
+    const registration = await navigator.serviceWorker.register(ultravioletWorkerUrl, { scope: '/uv/service/', updateViaCache: 'none' });
+    await registration.update();
+    if (!registration.active) {
+      const worker = registration.installing || registration.waiting;
+      if (!worker) throw new Error('The Ultraviolet worker did not start.');
+      await Promise.race([
+        new Promise(resolve => worker.addEventListener('statechange', () => { if (worker.state === 'activated') resolve(); })),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('The Ultraviolet worker did not start. Select Retry to repair it.')), 10000))
+      ]);
+    }
+    await initializeTransport();
+    return window.__uv$config;
+  })();
+  try { return await ultravioletInitializing; } finally { ultravioletInitializing = null; }
 }
 async function repairProxy() {
-  proxy = null; initializing = null;
+  scramjetProxy = null; scramjetInitializing = null; ultravioletInitializing = null; transportInitializing = null;
   const registrations = await navigator.serviceWorker.getRegistrations();
-  await Promise.all(registrations.filter(registration => registration.scope === `${location.origin}/`).map(registration => registration.unregister()));
+  await Promise.all(registrations.filter(registration => registration.scope === `${location.origin}/` || registration.scope === `${location.origin}/uv/service/`).map(registration => registration.unregister()));
   sessionStorage.setItem('supernova.reopen', JSON.stringify({ url: activeUrl, local: localGame, game: activeGame }));
   location.reload();
 }
@@ -196,14 +232,17 @@ async function openContent(url, local = false, game = false) {
   loadTimer = setTimeout(() => { if (token === navigationId) notify('This page is taking longer than expected. You can retry or try another website.', true); }, 20000);
   try {
     if (local) currentFrame = { frame: document.createElement('iframe') };
-    else { const controller = await initialize(); if (token !== navigationId) return; currentFrame = controller.createFrame(); }
+    else if (settings.proxyEngine === 'ultraviolet') {
+      const config = await initializeUltraviolet(); if (token !== navigationId) return;
+      currentFrame = { frame: document.createElement('iframe'), url: config.prefix + config.encodeUrl(url) };
+    } else { const controller = await initializeScramjet(); if (token !== navigationId) return; currentFrame = controller.createFrame(); }
     const frame = currentFrame.frame;
     frame.title = local ? 'Game' : 'Proxied website';
     frame.setAttribute('allow', 'fullscreen; autoplay; gamepad');
     frame.addEventListener('load', () => { clearTimeout(loadTimer); clearTimeout(gameCollapseTimer); $('notice').hidden = true; if (game) collapse(true, true); }, { once: true });
     $('frame-host').replaceChildren(frame);
     if (game) gameCollapseTimer = setTimeout(() => { if (token === navigationId) collapse(true, true); }, 1800);
-    if (local) frame.src = url; else currentFrame.go(url);
+    if (local) frame.src = url; else if (currentFrame.go) currentFrame.go(url); else frame.src = currentFrame.url;
   } catch (error) { if (token === navigationId) { clearTimeout(loadTimer); notify(error.message || 'Unable to open this page.', true); } }
 }
 for (const [form, input] of [['search','query'], ['address-form','address']]) $(form).addEventListener('submit', event => {
@@ -212,7 +251,7 @@ for (const [form, input] of [['search','query'], ['address-form','address']]) $(
 $('retry').onclick = async () => {
   if (!activeUrl) return;
   if (localGame) return openContent(activeUrl, true, activeGame);
-  try { await repairProxy(); } catch { openContent(activeUrl, false); }
+  try { await repairProxy(); } catch { openContent(activeUrl, false, activeGame); }
 };
 $('back')?.addEventListener('click', () => {
   try { currentFrame?.frame.contentWindow.history.back(); }
@@ -223,8 +262,8 @@ $('forward')?.addEventListener('click', () => {
   catch { notify('This page cannot go forward yet.'); }
 });
 $('reload').onclick = () => {
-  try { if (currentFrame?.reload) currentFrame.reload(); else if (currentFrame) currentFrame.frame.contentWindow.location.reload(); else if (activeUrl) openContent(activeUrl, localGame); }
-  catch { openContent(activeUrl, localGame); }
+  try { if (currentFrame?.reload) currentFrame.reload(); else if (currentFrame) currentFrame.frame.contentWindow.location.reload(); else if (activeUrl) openContent(activeUrl, localGame, activeGame); }
+  catch { openContent(activeUrl, localGame, activeGame); }
 };
 function renderGames() {
   const query = $('filter').value.trim().toLowerCase(); const visible = games.filter(game => game.name.toLowerCase().includes(query));
@@ -239,7 +278,7 @@ function renderGames() {
   }
 }
 $('filter').addEventListener('input', renderGames);
-fetch('/games.json?v=0.1.13').then(response => { if (!response.ok) throw new Error(); return response.json(); }).then(data => {
+fetch('/games.json?v=0.1.14').then(response => { if (!response.ok) throw new Error(); return response.json(); }).then(data => {
   if (!Array.isArray(data) || data.some(game => !game || !['name','icon','link'].every(key => typeof game[key] === 'string' && game[key].trim()))) throw new Error();
   games = data; renderGames();
 }).catch(() => { $('empty').textContent = 'The game collection could not be loaded. Please check games.json and reload.'; });
