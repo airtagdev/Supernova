@@ -1,4 +1,5 @@
 export const workerUrl = '/sw.js?v=20260922-1';
+export const ultravioletWorkerUrl = '/uv-sw.js?v=20260922-2';
 
 export function scramjetConfig() {
   return {
@@ -21,7 +22,7 @@ export function withTimeout(promise, message, milliseconds = 15000) {
 }
 
 // serviceWorker.ready can resolve to an OLD worker. Wait for the exact version.
-export function waitForWorker(container, registration, scriptURL, milliseconds = 15000) {
+export function waitForWorker(container, registration, scriptURL, milliseconds = 15000, requireControl = true) {
   return new Promise((resolve, reject) => {
     const watched = new Set();
     const finish = error => {
@@ -37,7 +38,7 @@ export function waitForWorker(container, registration, scriptURL, milliseconds =
       }
       if (registration.waiting?.scriptURL === scriptURL) registration.waiting.postMessage({ type: 'SKIP_WAITING' });
       if (registration.active?.scriptURL === scriptURL && registration.active.state === 'activated'
-          && container.controller === registration.active) finish();
+          && (!requireControl || container.controller === registration.active)) finish();
       else if ([...watched].some(worker => worker.scriptURL === scriptURL && worker.state === 'redundant')
           && ![registration.installing, registration.waiting, registration.active].some(worker => worker?.scriptURL === scriptURL && worker.state !== 'redundant')) {
         finish(new Error('The proxy worker failed to install. Select Retry to repair it.'));
@@ -58,14 +59,15 @@ export function isOwnedWorker(registration, origin) {
   });
 }
 
-export async function registerProxyWorker(container, origin) {
+export async function registerProxyWorker(container, origin, engine = 'scramjet') {
+  const ultraviolet = engine === 'ultraviolet';
+  const url = ultraviolet ? ultravioletWorkerUrl : workerUrl;
   const registration = await withTimeout(
-    container.register(workerUrl, { scope: '/', updateViaCache: 'none' }),
+    container.register(url, { scope: ultraviolet ? '/uv/service/' : '/', updateViaCache: 'none' }),
     'Could not register the proxy worker. Select Retry to repair it.'
   );
-  await waitForWorker(container, registration, new URL(workerUrl, origin).href);
-  // Remove the old UV scope only AFTER its replacement controls the portal.
-  const registrations = await container.getRegistrations();
-  await Promise.all(registrations.filter(item => item.scope === `${origin}/uv/service/` && isOwnedWorker(item, origin)).map(item => item.unregister()));
+  // A scoped UV worker cannot control the portal page at /. It only needs to
+  // be active before the first /uv/service/ iframe navigation.
+  await waitForWorker(container, registration, new URL(url, origin).href, 15000, !ultraviolet);
   return registration;
 }

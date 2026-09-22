@@ -1,14 +1,10 @@
-// One root worker owns both engines, including subresources and nested frames.
-importScripts('/scram/scramjet.all.js', '/uv/uv.bundle.js', '/uv-config.js', '/uv/uv.sw.js');
+importScripts('/scram/scramjet.all.js');
 const { ScramjetServiceWorker } = $scramjetLoadWorker();
 const scramjet = new ScramjetServiceWorker();
-const ultraviolet = new UVServiceWorker();
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
 self.addEventListener('message', event => { if (event.data?.type === 'SKIP_WAITING') self.skipWaiting(); });
 async function proxyRequest(event) {
-  // UV must work on a fresh profile, without a Scramjet config in IndexedDB.
-  if (ultraviolet.route(event)) return ultraviolet.fetch(event);
   await scramjet.loadConfig();
   if (!scramjet.config) throw new Error('Scramjet configuration is missing. Reopen the page from Supernova.');
   return scramjet.route(event) ? scramjet.fetch(event) : fetch(event.request);
@@ -16,8 +12,7 @@ async function proxyRequest(event) {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
-  if (!url.pathname.startsWith('/service/') && !url.pathname.startsWith('/uv/service/')
-      && url.pathname !== '/scram/scramjet.wasm.wasm') return;
+  if (!url.pathname.startsWith('/service/') && url.pathname !== '/scram/scramjet.wasm.wasm') return;
   // A missing Scramjet config must never block UI, chat, or transport assets.
   event.respondWith(proxyRequest(event).catch(error => {
     console.error('Proxy request failed:', error);

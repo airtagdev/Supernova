@@ -24,7 +24,8 @@ try {
   const stored = JSON.parse(localStorage.getItem('supernova.bookmarks') || '[]');
   if (Array.isArray(stored)) bookmarks = stored.filter(item => item && typeof item.title === 'string' && typeof item.url === 'string' && /^https?:\/\//.test(item.url)).slice(0, 100);
 } catch {}
-let scramjetProxy, scramjetInitializing, ultravioletInitializing, transportInitializing, workerInitializing, currentFrame, activeUrl, activeLabel = '', localGame = false, activeGame = false, games = [], gamesPromise, navigationId = 0, loadTimer, gameCollapseTimer;
+let scramjetProxy, scramjetInitializing, ultravioletInitializing, transportInitializing, currentFrame, activeUrl, activeLabel = '', localGame = false, activeGame = false, games = [], gamesPromise, navigationId = 0, loadTimer, gameCollapseTimer;
+const workerInitializers = new Map();
 function notify(message, retry = false) { $('notice-text').textContent = message; $('retry').hidden = !retry; $('notice').hidden = false; }
 let serviceStatusTimer;
 function setServiceStatus(service, online) {
@@ -256,12 +257,13 @@ function requireProxySupport() {
   if (!window.isSecureContext || !navigator.serviceWorker) throw new Error('Browsing requires HTTPS or localhost and service worker support.');
   if (!window.crossOriginIsolated) throw new Error('Proxy isolation headers are missing. Check the deployment configuration.');
 }
-async function initializeWorker() {
-  if (workerInitializing) return workerInitializing;
-  workerInitializing = registerProxyWorker(navigator.serviceWorker, location.origin).catch(error => {
-    workerInitializing = null; throw error;
+async function initializeWorker(engine) {
+  if (workerInitializers.has(engine)) return workerInitializers.get(engine);
+  const pending = registerProxyWorker(navigator.serviceWorker, location.origin, engine).catch(error => {
+    workerInitializers.delete(engine); throw error;
   });
-  return workerInitializing;
+  workerInitializers.set(engine, pending);
+  return pending;
 }
 async function initializeTransport() {
   if (transportInitializing) return transportInitializing;
@@ -286,7 +288,7 @@ async function initializeScramjet() {
     const controller = new ScramjetController(scramjetConfig());
     // Persist configuration before the worker handles the first proxied request.
     await withTimeout(controller.init(), 'Could not initialize proxy storage. Please retry.');
-    await initializeWorker();
+    await initializeWorker('scramjet');
     // A new controller may have posted to the old worker before activation.
     // Publish the current configuration again to the worker that now owns us.
     await controller.modifyConfig(scramjetConfig());
@@ -301,14 +303,14 @@ async function initializeUltraviolet() {
     requireProxySupport();
     if (!window.Ultraviolet) await loadScript('/uv/uv.bundle.js');
     if (!window.__uv$config) await loadScript('/uv-config.js');
-    await initializeWorker();
+    await initializeWorker('ultraviolet');
     await initializeTransport();
     return window.__uv$config;
   })();
   try { return await ultravioletInitializing; } finally { ultravioletInitializing = null; }
 }
 async function repairProxy() {
-  scramjetProxy = null; scramjetInitializing = null; ultravioletInitializing = null; transportInitializing = null; workerInitializing = null;
+  scramjetProxy = null; scramjetInitializing = null; ultravioletInitializing = null; transportInitializing = null; workerInitializers.clear();
   const registrations = await navigator.serviceWorker.getRegistrations();
   await Promise.all(registrations.filter(registration => isOwnedWorker(registration, location.origin) && (registration.scope === `${location.origin}/` || registration.scope === `${location.origin}/uv/service/`)).map(registration => registration.unregister()));
   sessionStorage.setItem('supernova.reopen', JSON.stringify({ url: activeUrl, label: activeLabel, local: localGame, game: activeGame }));

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { getEventListeners } from 'node:events';
-import { workerUrl, waitForWorker, registerProxyWorker, scramjetConfig, withTimeout } from '../public/proxy-runtime.js';
+import { workerUrl, ultravioletWorkerUrl, waitForWorker, registerProxyWorker, scramjetConfig, withTimeout } from '../public/proxy-runtime.js';
 
 const origin = 'https://supernova.test';
 const scriptURL = new URL(workerUrl, origin).href;
@@ -59,15 +59,17 @@ test('worker timeout cleans up listeners and returns a repair instruction', asyn
   assert.equal(getEventListeners(container, 'controllerchange').length, 0);
   assert.equal(getEventListeners(registration, 'updatefound').length, 0);
 });
-test('UV-first migration registers root and removes only the owned legacy scope', async () => {
+test('Scramjet registers at root and waits until it controls the portal', async () => {
   const { container, registration } = setup();
-  const removed = [];
-  const legacy = { scope: origin + '/uv/service/', active: worker(origin + '/uv-sw.js?v=old'), unregister: async () => removed.push('uv') };
-  const unrelated = { scope: origin + '/games/', active: worker(origin + '/games/sw.js'), unregister: async () => removed.push('game') };
   container.register = async (url, options) => { assert.equal(url, workerUrl); assert.equal(options.scope, '/'); return registration; };
-  container.getRegistrations = async () => [registration, legacy, unrelated];
   await registerProxyWorker(container, origin);
-  assert.deepEqual(removed, ['uv']);
+});
+test('Ultraviolet registers at its own scope and only waits for activation', async () => {
+  const active = worker(new URL(ultravioletWorkerUrl, origin).href);
+  const registration = Object.assign(new EventTarget(), { active, scope: origin + '/uv/service/' });
+  const container = Object.assign(new EventTarget(), { controller: worker(origin + '/sw.js?v=other') });
+  container.register = async (url, options) => { assert.equal(url, ultravioletWorkerUrl); assert.equal(options.scope, '/uv/service/'); return registration; };
+  assert.equal(await registerProxyWorker(container, origin, 'ultraviolet'), registration);
 });
 test('startup operations time out with a useful error and preserve rejections', async () => {
   await assert.rejects(withTimeout(new Promise(() => {}), 'transport timed out', 5), /transport timed out/);
