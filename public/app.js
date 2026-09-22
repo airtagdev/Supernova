@@ -27,35 +27,6 @@ try {
 let scramjetProxy, scramjetInitializing, ultravioletInitializing, transportInitializing, currentFrame, activeUrl, activeLabel = '', localGame = false, activeGame = false, games = [], gamesPromise, navigationId = 0, loadTimer, gameCollapseTimer;
 const workerInitializers = new Map();
 function notify(message, retry = false) { $('notice-text').textContent = message; $('retry').hidden = !retry; $('notice').hidden = false; }
-let serviceStatusTimer;
-function setServiceStatus(service, online) {
-  const node = $(`${service}-status`); if (!node) return;
-  node.dataset.state = online ? 'online' : 'offline';
-  node.title = `${service[0].toUpperCase() + service.slice(1)} ${online ? 'online' : 'offline'}`;
-  node.setAttribute('aria-label', node.title);
-}
-async function checkServiceStatus() {
-  clearTimeout(serviceStatusTimer);
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5000);
-  try {
-    if (!navigator.onLine) throw new Error('Offline');
-    const response = await fetch('/health', { cache: 'no-store', signal: controller.signal });
-    if (!response.ok) throw new Error('Unavailable');
-    const result = await response.json();
-    setServiceStatus('proxy', result.services?.proxy !== false);
-    setServiceStatus('chat', result.services?.chat !== false);
-  } catch { setServiceStatus('proxy', false); setServiceStatus('chat', false); }
-  finally {
-    clearTimeout(timeout);
-    if (document.visibilityState === 'visible') serviceStatusTimer = setTimeout(checkServiceStatus, 60000);
-  }
-}
-const beginStatusChecks = () => checkServiceStatus();
-if ('requestIdleCallback' in window) requestIdleCallback(beginStatusChecks, { timeout: 1500 }); else setTimeout(beginStatusChecks, 500);
-document.addEventListener('visibilitychange', () => { clearTimeout(serviceStatusTimer); if (document.visibilityState === 'visible') checkServiceStatus(); });
-window.addEventListener('offline', () => { clearTimeout(serviceStatusTimer); setServiceStatus('proxy', false); setServiceStatus('chat', false); });
-window.addEventListener('online', checkServiceStatus);
 function save() { try { localStorage.setItem('supernova.settings', JSON.stringify(settings)); $('saved').textContent = 'Saved on this browser'; } catch { notify('Your browser could not save these settings.'); } }
 function saveBookmarks() {
   try { localStorage.setItem('supernova.bookmarks', JSON.stringify(bookmarks)); }
@@ -331,6 +302,7 @@ async function openContent(url, local = false, game = false, label = '') {
     } else { const controller = await initializeScramjet(); if (token !== navigationId) return; currentFrame = controller.createFrame(); }
     const frame = currentFrame.frame;
     frame.title = local ? 'Game' : 'Proxied website';
+    frame.tabIndex = -1;
     frame.setAttribute('allow', 'fullscreen; autoplay; gamepad');
     frame.addEventListener('load', () => {
       if (token !== navigationId) return;
@@ -342,7 +314,14 @@ async function openContent(url, local = false, game = false, label = '') {
       } catch {}
       clearTimeout(loadTimer); clearTimeout(gameCollapseTimer);
       if (failed) { collapse(false); notify('The proxy could not load this page. Retry or select the other engine in Settings.', true); return; }
-      $('notice').hidden = true; updateBookmarkButton(); if (game) collapse(true, true);
+      $('notice').hidden = true; updateBookmarkButton();
+      if (game) {
+        collapse(true, true);
+        requestAnimationFrame(() => {
+          frame.focus({ preventScroll: true });
+          try { frame.contentWindow?.focus(); } catch {}
+        });
+      }
     });
     if (local) frame.src = url; else if (currentFrame.go) currentFrame.go(url); else frame.src = currentFrame.url;
     $('frame-host').replaceChildren(frame);
@@ -385,7 +364,7 @@ $('filter').addEventListener('input', renderGames);
 function loadGames() {
   if (gamesPromise) return gamesPromise;
   $('empty').hidden = false; $('empty').textContent = 'Loading your collection…';
-  gamesPromise = fetch('/games.json?v=0.1.18').then(response => { if (!response.ok) throw new Error(); return response.json(); }).then(data => {
+  gamesPromise = fetch('/games.json?v=0.1.19').then(response => { if (!response.ok) throw new Error(); return response.json(); }).then(data => {
     if (!Array.isArray(data) || data.some(game => !game || !['name','icon','link'].every(key => typeof game[key] === 'string' && game[key].trim()))) throw new Error();
     games = data; renderGames();
   }).catch(() => { gamesPromise = null; $('empty').hidden = false; $('empty').textContent = 'The game collection could not be loaded. Please reload and try again.'; });
