@@ -1,4 +1,5 @@
 import { resolveInput, gameTarget, engines } from './resolve.js';
+import { scramjetConfig, registerProxyWorker, isOwnedWorker, withTimeout } from './proxy-runtime.js?v=20260922-1';
 const $ = id => document.getElementById(id);
 const defaults = { title: '', icon: '', engine: 'duckduckgo', preset: 'custom', theme: 'graphite', proxyEngine: 'scramjet' };
 const themes = new Set(['graphite', 'midnight', 'obsidian']);
@@ -10,8 +11,6 @@ const tabPresets = {
   khan: { title: 'Khan Academy', icon: 'https://www.khanacademy.org/favicon.ico' },
   socrative: { title: 'Socrative', icon: 'https://www.google.com/s2/favicons?domain=socrative.com&sz=128' }
 };
-const serviceWorkerUrl = '/sw.js?v=20260916-3';
-const ultravioletWorkerUrl = '/uv-sw.js?v=20260916-1';
 let settings;
 try { settings = { ...defaults, ...JSON.parse(localStorage.getItem('supernova.settings') || '{}') }; } catch { settings = { ...defaults }; }
 if (!engines[settings.engine]) settings.engine = defaults.engine;
@@ -25,7 +24,7 @@ try {
   const stored = JSON.parse(localStorage.getItem('supernova.bookmarks') || '[]');
   if (Array.isArray(stored)) bookmarks = stored.filter(item => item && typeof item.title === 'string' && typeof item.url === 'string' && /^https?:\/\//.test(item.url)).slice(0, 100);
 } catch {}
-let scramjetProxy, scramjetInitializing, ultravioletInitializing, transportInitializing, currentFrame, activeUrl, activeLabel = '', localGame = false, activeGame = false, games = [], gamesPromise, navigationId = 0, loadTimer, gameCollapseTimer;
+let scramjetProxy, scramjetInitializing, ultravioletInitializing, transportInitializing, workerInitializing, currentFrame, activeUrl, activeLabel = '', localGame = false, activeGame = false, games = [], gamesPromise, navigationId = 0, loadTimer, gameCollapseTimer;
 function notify(message, retry = false) { $('notice-text').textContent = message; $('retry').hidden = !retry; $('notice').hidden = false; }
 let serviceStatusTimer;
 function setServiceStatus(service, online) {
@@ -240,16 +239,40 @@ function route() {
   document.querySelectorAll('nav a').forEach(link => { if (link.hash === '#' + selected) link.setAttribute('aria-current','page'); else link.removeAttribute('aria-current'); });
 }
 window.addEventListener('hashchange', route); route(); openChangelog();
-function loadScript(src) { return new Promise((resolve,reject) => { const script = document.createElement('script'); script.src = src; script.onload = resolve; script.onerror = () => { script.remove(); reject(new Error('Could not load proxy files. Please retry.')); }; document.head.append(script); }); }
+const scripts = new Map();
+function loadScript(src) {
+  if (scripts.has(src)) return scripts.get(src);
+  const script = document.createElement('script'); script.src = src;
+  const pending = withTimeout(new Promise((resolve, reject) => {
+    script.onload = resolve;
+    script.onerror = () => reject(new Error('Could not load proxy files. Please retry.'));
+    document.head.append(script);
+  }), 'Loading proxy files timed out. Please retry.').catch(error => {
+    script.remove(); scripts.delete(src); throw error;
+  });
+  scripts.set(src, pending); return pending;
+}
 function requireProxySupport() {
   if (!window.isSecureContext || !navigator.serviceWorker) throw new Error('Browsing requires HTTPS or localhost and service worker support.');
+  if (!window.crossOriginIsolated) throw new Error('Proxy isolation headers are missing. Check the deployment configuration.');
+}
+async function initializeWorker() {
+  if (workerInitializing) return workerInitializing;
+  workerInitializing = registerProxyWorker(navigator.serviceWorker, location.origin).catch(error => {
+    workerInitializing = null; throw error;
+  });
+  return workerInitializing;
 }
 async function initializeTransport() {
   if (transportInitializing) return transportInitializing;
   transportInitializing = (async () => {
     if (!window.BareMux) await loadScript('/baremux/index.js');
     const connection = window.supernovaBareMux ||= new BareMux.BareMuxConnection('/baremux/worker.js');
-    await connection.setTransport('/libcurl/index.mjs', [{ websocket: `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/wisp/` }]);
+    await withTimeout((async () => {
+      if (await connection.getTransport() !== '/libcurl/index.mjs') {
+        await connection.setTransport('/libcurl/index.mjs', [{ websocket: `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/wisp/` }]);
+      }
+    })(), 'The proxy connection did not start. Select Retry to repair it.');
   })();
   try { return await transportInitializing; } catch (error) { transportInitializing = null; throw error; }
 }
@@ -260,17 +283,13 @@ async function initializeScramjet() {
     requireProxySupport();
     if (!window.$scramjetLoadController) await loadScript('/scram/scramjet.all.js');
     const { ScramjetController } = $scramjetLoadController();
-    const controller = new ScramjetController({ prefix: '/service/', files: { wasm: '/scram/scramjet.wasm.wasm', all: '/scram/scramjet.all.js', sync: '/scram/scramjet.sync.js' } });
-    await controller.init();
-    const registration = await navigator.serviceWorker.register(serviceWorkerUrl, { scope: '/', updateViaCache: 'none' });
-    await registration.update();
-    await navigator.serviceWorker.ready;
-    if (!navigator.serviceWorker.controller || !navigator.serviceWorker.controller.scriptURL.includes(serviceWorkerUrl)) {
-      await Promise.race([
-        new Promise(resolve => navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true })),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('The proxy worker did not start. Select Retry to repair it.')), 10000))
-      ]);
-    }
+    const controller = new ScramjetController(scramjetConfig());
+    // Persist configuration before the worker handles the first proxied request.
+    await withTimeout(controller.init(), 'Could not initialize proxy storage. Please retry.');
+    await initializeWorker();
+    // A new controller may have posted to the old worker before activation.
+    // Publish the current configuration again to the worker that now owns us.
+    await controller.modifyConfig(scramjetConfig());
     await initializeTransport();
     scramjetProxy = controller; return controller;
   })();
@@ -282,25 +301,16 @@ async function initializeUltraviolet() {
     requireProxySupport();
     if (!window.Ultraviolet) await loadScript('/uv/uv.bundle.js');
     if (!window.__uv$config) await loadScript('/uv-config.js');
-    const registration = await navigator.serviceWorker.register(ultravioletWorkerUrl, { scope: '/uv/service/', updateViaCache: 'none' });
-    await registration.update();
-    if (!registration.active) {
-      const worker = registration.installing || registration.waiting;
-      if (!worker) throw new Error('The Ultraviolet worker did not start.');
-      await Promise.race([
-        new Promise(resolve => worker.addEventListener('statechange', () => { if (worker.state === 'activated') resolve(); })),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('The Ultraviolet worker did not start. Select Retry to repair it.')), 10000))
-      ]);
-    }
+    await initializeWorker();
     await initializeTransport();
     return window.__uv$config;
   })();
   try { return await ultravioletInitializing; } finally { ultravioletInitializing = null; }
 }
 async function repairProxy() {
-  scramjetProxy = null; scramjetInitializing = null; ultravioletInitializing = null; transportInitializing = null;
+  scramjetProxy = null; scramjetInitializing = null; ultravioletInitializing = null; transportInitializing = null; workerInitializing = null;
   const registrations = await navigator.serviceWorker.getRegistrations();
-  await Promise.all(registrations.filter(registration => registration.scope === `${location.origin}/` || registration.scope === `${location.origin}/uv/service/`).map(registration => registration.unregister()));
+  await Promise.all(registrations.filter(registration => isOwnedWorker(registration, location.origin) && (registration.scope === `${location.origin}/` || registration.scope === `${location.origin}/uv/service/`)).map(registration => registration.unregister()));
   sessionStorage.setItem('supernova.reopen', JSON.stringify({ url: activeUrl, label: activeLabel, local: localGame, game: activeGame }));
   location.reload();
 }
@@ -320,10 +330,20 @@ async function openContent(url, local = false, game = false, label = '') {
     const frame = currentFrame.frame;
     frame.title = local ? 'Game' : 'Proxied website';
     frame.setAttribute('allow', 'fullscreen; autoplay; gamepad');
-    frame.addEventListener('load', () => { clearTimeout(loadTimer); clearTimeout(gameCollapseTimer); $('notice').hidden = true; updateBookmarkButton(); if (game) collapse(true, true); }, { once: true });
-    $('frame-host').replaceChildren(frame);
-    if (game) gameCollapseTimer = setTimeout(() => { if (token === navigationId) collapse(true, true); }, 1800);
+    frame.addEventListener('load', () => {
+      if (token !== navigationId) return;
+      let failed = false;
+      try {
+        const doc = frame.contentDocument;
+        if (doc?.URL === 'about:blank') return;
+        failed = Boolean(doc?.querySelector('#supernova-proxy-error') || (doc?.querySelector('#errorTrace') && doc?.querySelector('#fetchedURL')));
+      } catch {}
+      clearTimeout(loadTimer); clearTimeout(gameCollapseTimer);
+      if (failed) { collapse(false); notify('The proxy could not load this page. Retry or select the other engine in Settings.', true); return; }
+      $('notice').hidden = true; updateBookmarkButton(); if (game) collapse(true, true);
+    });
     if (local) frame.src = url; else if (currentFrame.go) currentFrame.go(url); else frame.src = currentFrame.url;
+    $('frame-host').replaceChildren(frame);
   } catch (error) { if (token === navigationId) { clearTimeout(loadTimer); notify(error.message || 'Unable to open this page.', true); } }
 }
 for (const [form, input] of [['search','query'], ['address-form','address']]) $(form).addEventListener('submit', event => {
