@@ -5,23 +5,15 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>Supernova SNES Player</title>
-  <link rel="stylesheet" href="/games/smw/player.css?v=0.1.21">
+  <link rel="stylesheet" href="/games/smw/player.css?v=0.1.22">
 </head>
 <body>
-  <main id="setup" class="setup" hidden>
-    <img id="art" alt="" width="112" height="112">
-    <p class="eyebrow">SUPERNOVA SNES PLAYER</p>
-    <h1 id="title">Mario World</h1>
-    <p id="message">Select a clean Super Mario World (USA) ROM to prepare this game.</p>
-    <label class="file-button" for="base-rom">Choose SMW ROM</label>
-    <input id="base-rom" type="file" accept=".sfc,.smc,application/octet-stream">
-    <p class="privacy">The ROM stays in this browser. It is never uploaded to Supernova.</p>
-  </main>
   <main id="loading" class="loading">
     <div class="spinner" aria-hidden="true"></div>
-    <strong id="status">Preparing game…</strong>
+    <strong id="status">Loading game…</strong>
   </main>
-  <div id="game" hidden></div>
-  <script type="module" src="/games/smw/player.js?v=0.1.21"></script>
+  <main id="error" class="error" hidden><strong id="error-title">Game unavailable</strong><p id="message"></p></main>
+  <div id="game"></div>
+  <script type="module" src="/games/smw/player.js?v=0.1.22"></script>
 </body>
 </html>

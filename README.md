@@ -1,6 +1,6 @@
 # Supernova
 
-A restrained, dark browser portal built with Node.js and Fastify. Rammerhead is the default browsing engine, with Mercury Workshop Scramjet and Ultraviolet available as fallbacks. Includes a centered search page, JSON game library, saved tab appearance and search preferences, and a collapsible Home/Reload toolbar shared by websites and games.
+A restrained, dark browser portal built with Node.js and Fastify. Mercury Workshop Scramjet is the default browsing engine, with Ultraviolet available as a compatibility fallback. Includes a centered search page, JSON game library, saved tab appearance and search preferences, and a collapsible Home/Reload toolbar shared by websites and games.
 
 ## Run locally
 
@@ -46,7 +46,7 @@ Edit `public/games.json`:
 
 Place local game files in `public/games/`. Local games load directly; external games use the selected proxy engine. Only add content you have permission to host. The library fits ten tiles on wide screens, with centered incomplete rows and fewer columns on smaller screens. Remote icons need CORS support under cross-origin isolation; host icons locally for best reliability. Missing images use the app icon.
 
-The five Mario World hacks use redistributable BPS patches under `public/games/smw/patches/` and the self-hosted EmulatorJS SNES core. On first launch, the player asks the user to select a clean Super Mario World (USA) ROM. Patching happens locally, and the base and prepared games remain in that browser's IndexedDB; the base ROM is never sent to the server. A headered 524,800-byte ROM is normalized automatically, while checksum validation rejects the wrong game or revision.
+The five Mario World games use Supernova's self-hosted EmulatorJS SNES player. Their existing archives are streamed from an allowlist of fixed `files.smwgames.com` URLs through `/api/games/smw/:slug`, which avoids cross-origin loader failures and does not turn the server into a general-purpose fetch proxy. Users are not asked to supply local ROM files. Browser and edge caches may retain the streamed responses for faster repeat launches.
 
 ## Settings
 
@@ -54,10 +54,10 @@ Tab title, favicon, search engine and toolbar state are stored in this browser's
 
 ## Architecture and limitations
 
-The lightweight frontend uses native ES modules without a framework/build step. Rammerhead sessions are held in memory for up to eight hours and are lost when the server restarts; the client automatically requests a replacement. Scramjet is loaded only when selected. The server also serves bundled Scramjet and Ultraviolet files, BareMux and libcurl transport, and the same-origin `/wisp/` WebSocket endpoint. Cross-origin isolation headers support the client-side proxy transports. Proxy packages are locked in pnpm-lock.yaml.
+The lightweight frontend uses native ES modules without a framework/build step. Scramjet is loaded when browsing begins. The server also serves bundled Scramjet and Ultraviolet files, BareMux and libcurl transport, the self-hosted EmulatorJS runtime, and the same-origin `/wisp/` WebSocket endpoint. Cross-origin isolation headers support the client-side proxy transports. Proxy packages are locked in pnpm-lock.yaml.
 
-All rewriting proxies have compatibility limits, and some authentication, media, cross-origin and browser features may fail. Rammerhead runs in single-port mode so it can share Supernova's Koyeb/Railway service; sites that strictly require simulated cross-origin proxy ports may still need Scramjet or a directly hosted game build. A successful iframe load is not a guarantee that the destination rendered correctly. This app has no multi-user access control; configure suitable access controls and resource limits before opening it to a wide audience. Do not place credentials or private services on this app's origin. No browsing logs are added by the application.
+All rewriting proxies have compatibility limits, and some authentication, media, cross-origin and browser features may fail. Games with a permitted directly hosted build are generally more reliable than sending a third-party wrapper through a proxy. A successful iframe load is not a guarantee that the destination rendered correctly. This app has no multi-user access control; configure suitable access controls and resource limits before opening it to a wide audience. Do not place credentials or private services on this app's origin. No browsing logs are added by the application.
 
 ## Credits
 
-Proxy components: [Rammerhead](https://github.com/binary-person/rammerhead), [Mercury Workshop Scramjet](https://github.com/MercuryWorkshop/scramjet), Ultraviolet, BareMux, libcurl-transport and wisp-js, under their respective licenses. The Scramjet integration follows the official Scramjet-App wiring; application UI code is original.
+Proxy components: [Mercury Workshop Scramjet](https://github.com/MercuryWorkshop/scramjet), Ultraviolet, BareMux, libcurl-transport and wisp-js, under their respective licenses. The Scramjet integration follows the official Scramjet-App wiring; application UI code is original. EmulatorJS and its Snes9x core are distributed under their respective licenses.

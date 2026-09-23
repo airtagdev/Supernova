@@ -3,7 +3,7 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@10.18.3 --activate
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --prod --frozen-lockfile --ignore-scripts
-COPY --chown=node:node server.js rammerhead-runtime.js ./
+COPY --chown=node:node server.js smw-games.js ./
 COPY --chown=node:node public ./public
 USER node
 ENV NODE_ENV=production

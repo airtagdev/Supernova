@@ -1,9 +1,9 @@
 import { resolveInput, gameTarget, engines } from './resolve.js';
-import { scramjetConfig, registerProxyWorker, isOwnedWorker, withTimeout } from './proxy-runtime.js?v=20260923-2';
+import { scramjetConfig, registerProxyWorker, isOwnedWorker, withTimeout } from './proxy-runtime.js?v=20260923-3';
 const $ = id => document.getElementById(id);
-const defaults = { title: '', icon: '', engine: 'duckduckgo', preset: 'custom', theme: 'graphite', proxyEngine: 'rammerhead' };
+const defaults = { title: '', icon: '', engine: 'duckduckgo', preset: 'custom', theme: 'graphite', proxyEngine: 'scramjet' };
 const themes = new Set(['graphite', 'midnight', 'obsidian']);
-const proxyEngines = new Set(['rammerhead', 'scramjet', 'ultraviolet']);
+const proxyEngines = new Set(['scramjet', 'ultraviolet']);
 const tabPresets = {
   classroom: { title: 'Google Classroom', icon: 'https://ssl.gstatic.com/classroom/favicon.png' },
   drive: { title: 'Google Drive', icon: 'https://ssl.gstatic.com/images/branding/product/1x/drive_2020q4_48dp.png' },
@@ -19,20 +19,12 @@ if (!themes.has(settings.theme)) settings.theme = defaults.theme;
 if (!proxyEngines.has(settings.proxyEngine)) settings.proxyEngine = defaults.proxyEngine;
 if (typeof settings.title !== 'string') settings.title = '';
 if (typeof settings.icon !== 'string' || !/^data:image\/(png|jpeg|webp|x-icon|vnd.microsoft.icon);base64,/.test(settings.icon)) settings.icon = '';
-try {
-  const defaultVersion = 'rammerhead-v1';
-  if (localStorage.getItem('supernova.proxy-default') !== defaultVersion) {
-    if (settings.proxyEngine === 'scramjet') settings.proxyEngine = defaults.proxyEngine;
-    localStorage.setItem('supernova.proxy-default', defaultVersion);
-    localStorage.setItem('supernova.settings', JSON.stringify(settings));
-  }
-} catch {}
 let bookmarks = [];
 try {
   const stored = JSON.parse(localStorage.getItem('supernova.bookmarks') || '[]');
   if (Array.isArray(stored)) bookmarks = stored.filter(item => item && typeof item.title === 'string' && typeof item.url === 'string' && /^https?:\/\//.test(item.url)).slice(0, 100);
 } catch {}
-let rammerheadSessionPromise, scramjetProxy, scramjetInitializing, ultravioletInitializing, transportInitializing, currentFrame, activeUrl, activeLabel = '', localGame = false, activeGame = false, games = [], gamesPromise, navigationId = 0, loadTimer, gameCollapseTimer;
+let scramjetProxy, scramjetInitializing, ultravioletInitializing, transportInitializing, currentFrame, activeUrl, activeLabel = '', localGame = false, activeGame = false, games = [], gamesPromise, navigationId = 0, loadTimer, gameCollapseTimer;
 const workerInitializers = new Map();
 function notify(message, retry = false) { $('notice-text').textContent = message; $('retry').hidden = !retry; $('notice').hidden = false; }
 function save() { try { localStorage.setItem('supernova.settings', JSON.stringify(settings)); $('saved').textContent = 'Saved on this browser'; } catch { notify('Your browser could not save these settings.'); } }
@@ -288,26 +280,6 @@ async function initializeUltraviolet() {
   })();
   try { return await ultravioletInitializing; } finally { ultravioletInitializing = null; }
 }
-async function initializeRammerhead() {
-  if (rammerheadSessionPromise) return rammerheadSessionPromise;
-  rammerheadSessionPromise = withTimeout((async () => {
-    const stored = sessionStorage.getItem('supernova.rammerhead.session') || '';
-    const response = await fetch('/api/proxy/rammerhead/session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId: stored })
-    });
-    if (!response.ok) throw new Error('Could not create a Rammerhead browsing session.');
-    const data = await response.json();
-    if (!/^[a-f0-9]{32}$/i.test(data.sessionId || '')) throw new Error('The proxy returned an invalid session.');
-    sessionStorage.setItem('supernova.rammerhead.session', data.sessionId);
-    return data.sessionId;
-  })(), 'The Rammerhead session did not start. Select Retry to try again.').catch(error => {
-    rammerheadSessionPromise = null;
-    throw error;
-  });
-  return rammerheadSessionPromise;
-}
 async function repairProxy() {
   scramjetProxy = null; scramjetInitializing = null; ultravioletInitializing = null; transportInitializing = null; workerInitializers.clear();
   const registrations = await navigator.serviceWorker.getRegistrations();
@@ -324,10 +296,6 @@ async function openContent(url, local = false, game = false, label = '') {
   loadTimer = setTimeout(() => { if (token === navigationId) notify('This page is taking longer than expected. You can retry or try another website.', true); }, 20000);
   try {
     if (local) currentFrame = { frame: document.createElement('iframe') };
-    else if (settings.proxyEngine === 'rammerhead') {
-      const sessionId = await initializeRammerhead(); if (token !== navigationId) return;
-      currentFrame = { frame: document.createElement('iframe'), url: `/${sessionId}/${url}` };
-    }
     else if (settings.proxyEngine === 'ultraviolet') {
       const config = await initializeUltraviolet(); if (token !== navigationId) return;
       currentFrame = { frame: document.createElement('iframe'), url: config.prefix + config.encodeUrl(url) };
@@ -365,11 +333,6 @@ for (const [form, input] of [['search','query'], ['address-form','address']]) $(
 $('retry').onclick = async () => {
   if (!activeUrl) return;
   if (localGame) return openContent(activeUrl, true, activeGame, activeLabel);
-  if (settings.proxyEngine === 'rammerhead') {
-    rammerheadSessionPromise = null;
-    sessionStorage.removeItem('supernova.rammerhead.session');
-    return openContent(activeUrl, false, activeGame, activeLabel);
-  }
   try { await repairProxy(); } catch { openContent(activeUrl, false, activeGame, activeLabel); }
 };
 $('back')?.addEventListener('click', () => {
@@ -401,7 +364,7 @@ $('filter').addEventListener('input', renderGames);
 function loadGames() {
   if (gamesPromise) return gamesPromise;
   $('empty').hidden = false; $('empty').textContent = 'Loading your collection…';
-  gamesPromise = fetch('/games.json?v=0.1.21-1').then(response => { if (!response.ok) throw new Error(); return response.json(); }).then(data => {
+  gamesPromise = fetch('/games.json?v=0.1.22-1').then(response => { if (!response.ok) throw new Error(); return response.json(); }).then(data => {
     if (!Array.isArray(data) || data.some(game => !game || !['name','icon','link'].every(key => typeof game[key] === 'string' && game[key].trim()))) throw new Error();
     games = data; renderGames();
   }).catch(() => { gamesPromise = null; $('empty').hidden = false; $('empty').textContent = 'The game collection could not be loaded. Please reload and try again.'; });
