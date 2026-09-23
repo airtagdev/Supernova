@@ -9,6 +9,7 @@ const games = Object.freeze({
 const $ = id => document.getElementById(id);
 const slug = new URLSearchParams(location.search).get('game') || '';
 const name = games[slug];
+let started = false;
 
 function showError(message) {
   $('loading').hidden = true;
@@ -28,17 +29,30 @@ function launch() {
   window.EJS_pathtodata = '/emulatorjs/';
   window.EJS_startOnLoaded = true;
   window.EJS_threads = false;
+  window.EJS_forceLegacyCores = true;
+  window.EJS_videoRotation = 0;
+  window.EJS_disableDatabases = true;
+  window.EJS_disableLocalStorage = true;
+  window.EJS_DEBUG_XX = true;
   window.EJS_color = '#97aed9';
   window.EJS_ready = () => {
+    $('status').textContent = 'Downloading and starting game…';
+  };
+  window.EJS_onGameStart = () => {
+    started = true;
     $('loading').hidden = true;
     window.focus();
     $('game').focus({ preventScroll: true });
   };
-  window.EJS_onGameStart = window.EJS_ready;
   const loader = document.createElement('script');
   loader.src = '/emulatorjs/loader.js?v=4.2.3';
   loader.onerror = () => showError('The SNES player could not be loaded. Reload and try again.');
   document.body.append(loader);
+  setTimeout(() => {
+    if (started) return;
+    const detail = window.EJS_emulator?.textElem?.innerText?.trim();
+    showError(detail && !/^loading/i.test(detail) ? detail : 'The game took too long to start. Reload and try again.');
+  }, 45000);
 }
 
 launch();
