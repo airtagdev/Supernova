@@ -47,7 +47,7 @@
   {
     "name": "Awesome Mario World",
     "icon": "/icons/games/mario/awesome-mario-world.jpg",
-    "link": "https://www.smwgames.com/game/8873-awesome-mario-world-"
+    "link": "/games/smw/index.html?game=awesome-mario-world"
   },
   {
     "name": "Basket Random",
@@ -267,7 +267,7 @@
   {
     "name": "Mega Mario World",
     "icon": "/icons/games/mario/mega-mario-world.jpg",
-    "link": "https://www.smwgames.com/game/7950-mega-mario-world"
+    "link": "/games/smw/index.html?game=mega-mario-world"
   },
   {
     "name": "Minesweeper Online",
@@ -402,12 +402,12 @@
   {
     "name": "Super Mario Legacy",
     "icon": "/icons/games/mario/super-mario-legacy.jpg",
-    "link": "https://www.smwgames.com/game/12972-super-mario-legacy"
+    "link": "/games/smw/index.html?game=super-mario-legacy"
   },
   {
     "name": "Superstar Mario World",
     "icon": "/icons/games/mario/superstar-mario-world.jpg",
-    "link": "https://www.smwgames.com/game/14331-superstar-mario-world"
+    "link": "/games/smw/index.html?game=superstar-mario-world"
   },
   {
     "name": "Tag",
@@ -442,7 +442,7 @@
   {
     "name": "Total Mario World",
     "icon": "/icons/games/mario/total-mario-world.jpg",
-    "link": "https://www.smwgames.com/game/14421-total-mario-world"
+    "link": "/games/smw/index.html?game=total-mario-world"
   },
   {
     "name": "Tower Game",

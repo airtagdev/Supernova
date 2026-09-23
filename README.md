@@ -46,6 +46,8 @@ Edit `public/games.json`:
 
 Place local game files in `public/games/`. Local games load directly; external games use the selected proxy engine. Only add content you have permission to host. The library fits ten tiles on wide screens, with centered incomplete rows and fewer columns on smaller screens. Remote icons need CORS support under cross-origin isolation; host icons locally for best reliability. Missing images use the app icon.
 
+The five Mario World hacks use redistributable BPS patches under `public/games/smw/patches/` and the self-hosted EmulatorJS SNES core. On first launch, the player asks the user to select a clean Super Mario World (USA) ROM. Patching happens locally, and the base and prepared games remain in that browser's IndexedDB; the base ROM is never sent to the server. A headered 524,800-byte ROM is normalized automatically, while checksum validation rejects the wrong game or revision.
+
 ## Settings
 
 Tab title, favicon, search engine and toolbar state are stored in this browser's localStorage. DuckDuckGo is the default engine. Uploaded favicon data stays in this browser. The content view preserves the outer app tab appearance.

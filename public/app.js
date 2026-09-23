@@ -1,5 +1,5 @@
 import { resolveInput, gameTarget, engines } from './resolve.js';
-import { scramjetConfig, registerProxyWorker, isOwnedWorker, withTimeout } from './proxy-runtime.js?v=20260923-1';
+import { scramjetConfig, registerProxyWorker, isOwnedWorker, withTimeout } from './proxy-runtime.js?v=20260923-2';
 const $ = id => document.getElementById(id);
 const defaults = { title: '', icon: '', engine: 'duckduckgo', preset: 'custom', theme: 'graphite', proxyEngine: 'rammerhead' };
 const themes = new Set(['graphite', 'midnight', 'obsidian']);
@@ -401,7 +401,7 @@ $('filter').addEventListener('input', renderGames);
 function loadGames() {
   if (gamesPromise) return gamesPromise;
   $('empty').hidden = false; $('empty').textContent = 'Loading your collection…';
-  gamesPromise = fetch('/games.json?v=0.1.20-1').then(response => { if (!response.ok) throw new Error(); return response.json(); }).then(data => {
+  gamesPromise = fetch('/games.json?v=0.1.21-1').then(response => { if (!response.ok) throw new Error(); return response.json(); }).then(data => {
     if (!Array.isArray(data) || data.some(game => !game || !['name','icon','link'].every(key => typeof game[key] === 'string' && game[key].trim()))) throw new Error();
     games = data; renderGames();
   }).catch(() => { gamesPromise = null; $('empty').hidden = false; $('empty').textContent = 'The game collection could not be loaded. Please reload and try again.'; });

@@ -1,5 +1,7 @@
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Fastify from 'fastify';
 import serveStatic from '@fastify/static';
@@ -11,6 +13,9 @@ import { uvPath } from '@titaniumnetwork-dev/ultraviolet';
 import { createRammerheadRuntime, isRammerheadRequest } from './rammerhead-runtime.js';
 logging.set_level(logging.NONE);
 wisp.options.allow_udp_streams = false;
+const require = createRequire(import.meta.url);
+const emulatorDataPath = join(dirname(require.resolve('@emulatorjs/emulatorjs/package.json')), 'data');
+const emulatorCorePath = dirname(require.resolve('@emulatorjs/core-snes9x/package.json'));
 const rammerhead = createRammerheadRuntime();
 const app = Fastify({ serverFactory: handler => createServer((req, res) => {
   if (isRammerheadRequest(req.url)) return rammerhead.handleRequest(req, res);
@@ -99,7 +104,7 @@ app.post('/api/proxy/rammerhead/session', async (request, reply) => {
   return reply.header('Cache-Control', 'no-store').send({ sessionId });
 });
 await app.register(serveStatic, { root: fileURLToPath(new URL('./public/', import.meta.url)), maxAge: 0 });
-for (const [prefix, root] of [['/scram/', scramjetPath], ['/uv/', uvPath], ['/libcurl/', libcurlPath], ['/baremux/', baremuxPath]]) {
+for (const [prefix, root] of [['/emulatorjs/cores/', emulatorCorePath], ['/emulatorjs/', emulatorDataPath], ['/scram/', scramjetPath], ['/uv/', uvPath], ['/libcurl/', libcurlPath], ['/baremux/', baremuxPath]]) {
   await app.register(serveStatic, { root, prefix, decorateReply: false, maxAge: '1h' });
 }
 app.get('/health', async () => ({ status: 'ok', services: { proxy: true, rammerhead: true, chat: true } }));
