@@ -8,14 +8,18 @@ import { scramjetPath } from '@mercuryworkshop/scramjet/path';
 import { libcurlPath } from '@mercuryworkshop/libcurl-transport';
 import { baremuxPath } from '@mercuryworkshop/bare-mux/node';
 import { uvPath } from '@titaniumnetwork-dev/ultraviolet';
+import { createRammerheadRuntime, isRammerheadRequest } from './rammerhead-runtime.js';
 logging.set_level(logging.NONE);
 wisp.options.allow_udp_streams = false;
+const rammerhead = createRammerheadRuntime();
 const app = Fastify({ serverFactory: handler => createServer((req, res) => {
+  if (isRammerheadRequest(req.url)) return rammerhead.handleRequest(req, res);
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
   res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   handler(req, res);
 }).on('upgrade', (req, socket, head) => {
+  if (isRammerheadRequest(req.url)) return rammerhead.handleUpgrade(req, socket, head);
   if (req.url !== '/wisp/') return socket.destroy();
   const origin = req.headers.origin;
   try { if (!origin || new URL(origin).host !== req.headers.host) return socket.destroy(); }
@@ -88,16 +92,22 @@ app.post('/api/chat/messages', async (request, reply) => {
   broadcastChat(event);
   return reply.code(202).send({ ok: true });
 });
+app.post('/api/proxy/rammerhead/session', async (request, reply) => {
+  if (!sameOrigin(request)) return reply.code(403).send({ error: 'Origin not allowed.' });
+  const preferredId = typeof request.body?.sessionId === 'string' ? request.body.sessionId : '';
+  const sessionId = rammerhead.createSession(preferredId);
+  return reply.header('Cache-Control', 'no-store').send({ sessionId });
+});
 await app.register(serveStatic, { root: fileURLToPath(new URL('./public/', import.meta.url)), maxAge: 0 });
 for (const [prefix, root] of [['/scram/', scramjetPath], ['/uv/', uvPath], ['/libcurl/', libcurlPath], ['/baremux/', baremuxPath]]) {
   await app.register(serveStatic, { root, prefix, decorateReply: false, maxAge: '1h' });
 }
-app.get('/health', async () => ({ status: 'ok', services: { proxy: true, chat: true } }));
+app.get('/health', async () => ({ status: 'ok', services: { proxy: true, rammerhead: true, chat: true } }));
 app.setNotFoundHandler((request, reply) => reply.code(404).send({ error: 'Not found' }));
 const port = Number(process.env.PORT || 8080);
-await app.listen({ host: '0.0.0.0', port });
+await app.listen({ host: process.env.HOST || '0.0.0.0', port });
 console.log(`Supernova listening on port ${port}`);
 for (const signal of ['SIGTERM', 'SIGINT']) process.on(signal, async () => {
   const timeout = setTimeout(() => process.exit(0), 5000).unref();
-  await app.close(); clearTimeout(timeout); process.exit(0);
+  await app.close(); rammerhead.close(); clearTimeout(timeout); process.exit(0);
 });

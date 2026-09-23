@@ -1,6 +1,6 @@
 # Supernova
 
-A restrained, dark browser portal built with Node.js, Fastify and Mercury Workshop Scramjet. Includes a centered search page, JSON game library, saved tab appearance and search preferences, and a collapsible Home/Reload toolbar shared by websites and games.
+A restrained, dark browser portal built with Node.js and Fastify. Rammerhead is the default browsing engine, with Mercury Workshop Scramjet and Ultraviolet available as fallbacks. Includes a centered search page, JSON game library, saved tab appearance and search preferences, and a collapsible Home/Reload toolbar shared by websites and games.
 
 ## Run locally
 
@@ -44,7 +44,7 @@ Edit `public/games.json`:
 ]
 ```
 
-Place local game files in `public/games/`. Local games load directly; external games use Scramjet. The catalog starts empty. Only add content you have permission to host. The library fits ten tiles on wide screens, with centered incomplete rows and fewer columns on smaller screens. Remote icons need CORS support under cross-origin isolation; host icons locally for best reliability. Missing images use the app icon.
+Place local game files in `public/games/`. Local games load directly; external games use the selected proxy engine. Only add content you have permission to host. The library fits ten tiles on wide screens, with centered incomplete rows and fewer columns on smaller screens. Remote icons need CORS support under cross-origin isolation; host icons locally for best reliability. Missing images use the app icon.
 
 ## Settings
 
@@ -52,10 +52,10 @@ Tab title, favicon, search engine and toolbar state are stored in this browser's
 
 ## Architecture and limitations
 
-The lightweight frontend uses native ES modules without a framework/build step. Scramjet is loaded on first browsing use. The server serves the frontend, bundled Scramjet binaries, BareMux and libcurl transport, and the same-origin `/wisp/` WebSocket endpoint. Cross-origin isolation headers support the proxy transport. Proxy packages are locked in pnpm-lock.yaml.
+The lightweight frontend uses native ES modules without a framework/build step. Rammerhead sessions are held in memory for up to eight hours and are lost when the server restarts; the client automatically requests a replacement. Scramjet is loaded only when selected. The server also serves bundled Scramjet and Ultraviolet files, BareMux and libcurl transport, and the same-origin `/wisp/` WebSocket endpoint. Cross-origin isolation headers support the client-side proxy transports. Proxy packages are locked in pnpm-lock.yaml.
 
-Scramjet is experimental: site compatibility varies, and some authentication, media and browser features may fail. A successful iframe load is not a guarantee that the destination rendered correctly. The first navigation includes proxy initialization. This first version has no multi-user access control; configure suitable access controls and resource limits before opening it to a wide audience. Do not place credentials or private services on this app's origin. No destination-content cache or browsing logs are added by the application.
+All rewriting proxies have compatibility limits, and some authentication, media, cross-origin and browser features may fail. Rammerhead runs in single-port mode so it can share Supernova's Koyeb/Railway service; sites that strictly require simulated cross-origin proxy ports may still need Scramjet or a directly hosted game build. A successful iframe load is not a guarantee that the destination rendered correctly. This app has no multi-user access control; configure suitable access controls and resource limits before opening it to a wide audience. Do not place credentials or private services on this app's origin. No browsing logs are added by the application.
 
 ## Credits
 
-Proxy components: [Mercury Workshop Scramjet](https://github.com/MercuryWorkshop/scramjet), BareMux, libcurl-transport and wisp-js, under their respective licenses. The integration follows the official Scramjet-App wiring; application UI code is original.
+Proxy components: [Rammerhead](https://github.com/binary-person/rammerhead), [Mercury Workshop Scramjet](https://github.com/MercuryWorkshop/scramjet), Ultraviolet, BareMux, libcurl-transport and wisp-js, under their respective licenses. The Scramjet integration follows the official Scramjet-App wiring; application UI code is original.
