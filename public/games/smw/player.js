@@ -25,7 +25,7 @@ function launch() {
   window.EJS_core = 'snes';
   window.EJS_gameName = name;
   window.EJS_gameID = `supernova-${slug}`;
-  window.EJS_gameUrl = `/api/games/smw/${slug}`;
+  window.EJS_gameUrl = `/games/smw/roms/${slug}.sfc?v=0.1.25`;
   window.EJS_pathtodata = '/emulatorjs/';
   window.EJS_startOnLoaded = true;
   window.EJS_threads = false;

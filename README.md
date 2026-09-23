@@ -46,7 +46,7 @@ Edit `public/games.json`:
 
 Place local game files in `public/games/`. Local games load directly; external games use the selected proxy engine. Only add content you have permission to host. The library fits ten tiles on wide screens, with centered incomplete rows and fewer columns on smaller screens. Remote icons need CORS support under cross-origin isolation; host icons locally for best reliability. Missing images use the app icon.
 
-The five Mario World games use Supernova's self-hosted EmulatorJS SNES player. Their existing archives are streamed from an allowlist of fixed `files.smwgames.com` URLs through `/api/games/smw/:slug`, which avoids cross-origin loader failures and does not turn the server into a general-purpose fetch proxy. Users are not asked to supply local ROM files. Browser and edge caches may retain the streamed responses for faster repeat launches.
+The five Mario World games use Supernova's self-hosted EmulatorJS SNES player and bundled `.sfc` files in `public/games/smw/roms`. Game startup no longer depends on an external archive host or asks users to select local files. Only bundle game files that you have permission to distribute.
 
 ## Settings
 

@@ -2,7 +2,6 @@ import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
-import { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import Fastify from 'fastify';
 import serveStatic from '@fastify/static';
@@ -11,7 +10,6 @@ import { scramjetPath } from '@mercuryworkshop/scramjet/path';
 import { libcurlPath } from '@mercuryworkshop/libcurl-transport';
 import { baremuxPath } from '@mercuryworkshop/bare-mux/node';
 import { uvPath } from '@titaniumnetwork-dev/ultraviolet';
-import { getSmwGameArchive } from './smw-games.js';
 logging.set_level(logging.NONE);
 wisp.options.allow_udp_streams = false;
 const require = createRequire(import.meta.url);
@@ -94,24 +92,6 @@ app.post('/api/chat/messages', async (request, reply) => {
   if (chatHistory.length > 60) chatHistory.shift();
   broadcastChat(event);
   return reply.code(202).send({ ok: true });
-});
-app.get('/api/games/smw/:slug', async (request, reply) => {
-  const archiveUrl = getSmwGameArchive(request.params.slug);
-  if (!archiveUrl) return reply.code(404).send({ error: 'Game not found.' });
-  try {
-    const upstream = await fetch(archiveUrl, { signal: AbortSignal.timeout(30000) });
-    if (!upstream.ok || !upstream.body) throw new Error(`Archive host returned ${upstream.status}.`);
-    const contentLength = Number(upstream.headers.get('content-length'));
-    if (Number.isFinite(contentLength) && contentLength > 8 * 1024 * 1024) throw new Error('Archive is larger than expected.');
-    reply.header('Content-Type', 'application/octet-stream');
-    reply.header('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
-    reply.header('Content-Disposition', `inline; filename="${request.params.slug}.7z"`);
-    if (Number.isFinite(contentLength) && contentLength >= 0) reply.header('Content-Length', String(contentLength));
-    return reply.send(Readable.fromWeb(upstream.body));
-  } catch (error) {
-    request.log.warn({ error, slug: request.params.slug }, 'SMW archive fetch failed');
-    return reply.code(502).send({ error: 'The game archive is temporarily unavailable.' });
-  }
 });
 await app.register(serveStatic, { root: fileURLToPath(new URL('./public/', import.meta.url)), maxAge: 0 });
 for (const [prefix, root] of [['/emulatorjs/cores/', emulatorCorePath], ['/emulatorjs/', emulatorDataPath], ['/scram/', scramjetPath], ['/uv/', uvPath], ['/libcurl/', libcurlPath], ['/baremux/', baremuxPath]]) {
