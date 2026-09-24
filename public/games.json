@@ -412,7 +412,12 @@
   {
     "name": "Slope",
     "icon": "/icons/games/library/slope.png",
-    "link": "https://jasongamesdev.github.io/slope/"
+    "link": "https://storage.y8.com/y8-studio/unity_webgl/Gani/slope_2026_v2/?key=9757549&ratio_tolerant=true&value=80527"
+  },
+  {
+    "name": "Slope Multiplayer",
+    "icon": "/icons/games/library/slope-multiplayer.jpg",
+    "link": "https://storage.y8.com/y8-studio/html5/Gani/slope_multiplayer_v1/?key=y8&ratio_tolerant=true&value=default"
   },
   {
     "name": "Slow Roads",
