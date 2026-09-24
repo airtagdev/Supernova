@@ -1,10 +1,24 @@
 importScripts('/scram/scramjet.all.js');
 const { ScramjetServiceWorker } = $scramjetLoadWorker();
 const scramjet = new ScramjetServiceWorker();
+let configReady = Promise.resolve();
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
-self.addEventListener('message', event => { if (event.data?.type === 'SKIP_WAITING') self.skipWaiting(); });
+self.addEventListener('message', event => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
+  if (event.data?.scramjet$type === 'loadConfig') {
+    // Scramjet v1's message handler assigns its instance config without
+    // initializing the shared URL rewriter. Reloading the just-persisted
+    // config completes that initialization after worker restarts and updates.
+    configReady = (async () => {
+      scramjet.config = undefined;
+      await scramjet.loadConfig();
+    })();
+    event.waitUntil?.(configReady);
+  }
+});
 async function proxyRequest(event) {
+  await configReady;
   await scramjet.loadConfig();
   if (!scramjet.config) throw new Error('Scramjet configuration is missing. Reopen the page from Supernova.');
   return scramjet.route(event) ? scramjet.fetch(event) : fetch(event.request);

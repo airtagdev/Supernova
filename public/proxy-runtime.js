@@ -1,4 +1,4 @@
-export const workerUrl = '/sw.js?v=20260923-3';
+export const workerUrl = '/sw.js?v=20260924-1';
 export const ultravioletWorkerUrl = '/uv-sw.js?v=20260923-3';
 
 export function scramjetConfig() {

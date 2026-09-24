@@ -6,20 +6,43 @@ import vm from 'node:vm';
 const source = await readFile(new URL('../public/sw.js', import.meta.url), 'utf8');
 function harness({ config = true, fail = false } = {}) {
   const handlers = new Map(), calls = [];
+  let runtimeReady = false;
+  const self = {
+    location: { origin: 'https://supernova.test' },
+    addEventListener(type, fn) { const list = handlers.get(type) || []; list.push(fn); handlers.set(type, list); },
+    skipWaiting() {}, clients: { claim() {} }
+  };
   class ScramjetServiceWorker {
-    async loadConfig() { calls.push('config'); this.config = config ? { prefix: '/service/' } : null; }
+    constructor() {
+      // Scramjet v1 assigns the instance config from controller messages but
+      // does not initialize its shared URL-rewriter state.
+      self.addEventListener('message', event => {
+        if (event.data?.scramjet$type === 'loadConfig') this.config = event.data.config;
+      });
+    }
+    async loadConfig() {
+      calls.push('config');
+      if (this.config) return;
+      this.config = config ? { prefix: '/service/' } : null;
+      runtimeReady = Boolean(this.config);
+    }
     route(event) { return event.request.url.includes('/service/') || event.request.url.endsWith('/scramjet.wasm.wasm'); }
-    async fetch(event) { calls.push(['scramjet', event]); if (fail) throw new Error('transport failed'); return new Response('scramjet'); }
+    async fetch(event) { calls.push(['scramjet', event]); if (fail || !runtimeReady) throw new Error('transport failed'); return new Response('scramjet'); }
   }
-  const self = { location: { origin: 'https://supernova.test' }, addEventListener: (type, fn) => handlers.set(type, fn), skipWaiting() {}, clients: { claim() {} } };
   vm.runInNewContext(source, { self, URL, Response, importScripts() {}, $scramjetLoadWorker: () => ({ ScramjetServiceWorker }), console: { error() {} }, fetch: async () => { calls.push('network'); return new Response('network'); } });
+  const dispatch = (type, event) => { for (const handler of handlers.get(type) || []) handler(event); };
   function request(path, destination = 'iframe') {
     let response;
     const event = { request: { url: new URL(path, self.location.origin).href, destination }, clientId: 'nested-game-frame', respondWith(value) { response = value; } };
-    handlers.get('fetch')(event);
+    dispatch('fetch', event);
     return { response, event };
   }
-  return { calls, request };
+  async function message(data) {
+    const waits = [];
+    dispatch('message', { data, waitUntil(value) { waits.push(value); } });
+    await Promise.all(waits);
+  }
+  return { calls, request, message };
 }
 test('app, chat, UV scripts and BareMux worker bypass Scramjet storage', () => {
   const { request, calls } = harness({ config: false });
@@ -37,6 +60,13 @@ test('nested frames, workers and WASM requests retain their original event and c
     await result.response;
     assert.equal(calls.at(-1)[0], engine); assert.equal(calls.at(-1)[1], result.event);
   }
+});
+test('controller config messages reinitialize Scramjet shared runtime state', async () => {
+  const runtime = harness();
+  await runtime.message({ scramjet$type: 'loadConfig', config: { prefix: '/service/' } });
+  const response = await runtime.request('/service/encoded-url').response;
+  assert.equal(response.status, 200);
+  assert.equal(await response.text(), 'scramjet');
 });
 test('missing config returns a visible error rather than a rejected fetch', async () => {
   const result = await harness({ config: false }).request('/service/encoded-url').response;
