@@ -60,6 +60,11 @@
     "link": "https://jasongamesdev.github.io/basketball-stars/"
   },
   {
+    "name": "BitLife",
+    "icon": "/icons/games/library/bitlife.webp",
+    "link": "https://play.bitlifefree.online/"
+  },
+  {
     "name": "Bloxd.io",
     "icon": "/icons/games/library/bloxd-io.png",
     "link": "https://bloxd.io/"
@@ -88,6 +93,11 @@
     "name": "Cluster Rush",
     "icon": "/icons/games/library/cluster-rush.png",
     "link": "https://iframe.unblocked-76-games.org/cluster-rush-main"
+  },
+  {
+    "name": "Clutched.io",
+    "icon": "/icons/games/library/clutched-io.jpg",
+    "link": "https://clutched.io/"
   },
   {
     "name": "Codenames",
@@ -153,6 +163,21 @@
     "name": "Duck Hunt JS",
     "icon": "/icons/games/library/duck-hunt-js.png",
     "link": "https://duckhuntjs.com/"
+  },
+  {
+    "name": "Dune",
+    "icon": "/icons/games/library/dune.jpg",
+    "link": "https://gaming-escape.github.io/public/assets/games/dune/"
+  },
+  {
+    "name": "Eaglercraft 1.12",
+    "icon": "/icons/games/library/eaglercraft-1-12.png",
+    "link": "https://play.eaglercraft.win/eagler-files/1.12/main/"
+  },
+  {
+    "name": "Eaglercraft 1.8",
+    "icon": "/icons/games/library/eaglercraft-1-8.png",
+    "link": "https://play.eaglercraft.win/eagler-files/1.8/main/"
   },
   {
     "name": "EmuBrowser",
@@ -398,6 +423,11 @@
     "name": "Snake",
     "icon": "/icons/games/library/snake.svg",
     "link": "/games/snake/index.html"
+  },
+  {
+    "name": "Snow Rider 3D",
+    "icon": "/icons/games/library/snow-rider-3d.png",
+    "link": "https://snowrider.com/game-classic/"
   },
   {
     "name": "Stickman Hook",
