@@ -50,6 +50,11 @@
     "link": "/games/smw/index.html?game=awesome-mario-world"
   },
   {
+    "name": "Backrooms Recovery",
+    "icon": "/icons/games/library/backrooms-recovery.jpg",
+    "link": "https://h5.meegames.com/games/8174609525/backrooms-recovery/index.html"
+  },
+  {
     "name": "Basket Random",
     "icon": "/icons/games/library/basket-random.png",
     "link": "https://jasongamesdev.github.io/basket-random/"
@@ -90,6 +95,11 @@
     "link": "https://candybox2.github.io/"
   },
   {
+    "name": "Car Circle",
+    "icon": "/icons/games/library/car-circle.jpg",
+    "link": "https://h5.meegames.com/games/7362587937/car-circle/index.html"
+  },
+  {
     "name": "Clumsy Bird",
     "icon": "/icons/games/library/clumsy-bird.png",
     "link": "https://ellisonleao.github.io/clumsy-bird/"
@@ -120,6 +130,11 @@
     "link": "https://gaming-escape.github.io/public/assets/games/cookie-clicker/"
   },
   {
+    "name": "Count Control Legends",
+    "icon": "/icons/games/library/count-control-legends.jpg",
+    "link": "https://h5.meegames.com/games/1815367480/count-control-legends/index.html"
+  },
+  {
     "name": "Crossy Road",
     "icon": "/icons/games/library/crossy-road.png",
     "link": "https://jasongamesdev.github.io/crossy-road/"
@@ -133,6 +148,11 @@
     "name": "Curve Fever Pro",
     "icon": "/icons/games/curve-fever-pro.jpg",
     "link": "https://curvefever.pro/"
+  },
+  {
+    "name": "Decor Life",
+    "icon": "/icons/games/library/decor-life.jpg",
+    "link": "https://h5.meegames.com/games/7780540340/decor-life/index.html"
   },
   {
     "name": "Deepest Sword",
@@ -150,6 +170,11 @@
     "link": "https://digdig.io/"
   },
   {
+    "name": "Dino Simulator",
+    "icon": "/icons/games/library/dino-simulator.jpg",
+    "link": "https://h5.meegames.com/games/7571200207/dino-simulator/index.html"
+  },
+  {
     "name": "Doodle Jump",
     "icon": "/icons/games/library/doodle-jump.png",
     "link": "https://jasongamesdev.github.io/doodle-jump/"
@@ -158,6 +183,11 @@
     "name": "Drawasaurus",
     "icon": "/icons/games/drawasaurus.png",
     "link": "https://www.drawasaurus.org/"
+  },
+  {
+    "name": "Dreadhead Parkour",
+    "icon": "/icons/games/library/dreadhead-parkour.jpg",
+    "link": "https://h5.meegames.com/games/5657917465/dreadhead-parkour/index.html"
   },
   {
     "name": "Drift Boss",
@@ -215,6 +245,11 @@
     "link": "https://evoworld.io/"
   },
   {
+    "name": "Fashion Legends",
+    "icon": "/icons/games/library/fashion-legends.jpg",
+    "link": "https://h5.meegames.com/games/3419715045/fashion-legends/index.html"
+  },
+  {
     "name": "Fireboy and Watergirl",
     "icon": "/icons/games/library/fireboy-and-watergirl.png",
     "link": "https://jasongamesdev.github.io/fireboy-and-watergirl/"
@@ -253,6 +288,11 @@
     "name": "GoBattle.io",
     "icon": "/icons/games/gobattle-io.jpg",
     "link": "https://gobattle.io/"
+  },
+  {
+    "name": "Going Up Rooftop",
+    "icon": "/icons/games/library/going-up-rooftop.jpg",
+    "link": "https://h5.meegames.com/games/6604474078/going-up-rooftop/index.html"
   },
   {
     "name": "Happy Wheels",
@@ -310,6 +350,11 @@
     "link": "https://krunker.io/"
   },
   {
+    "name": "Level Devil",
+    "icon": "/icons/games/library/level-devil.jpg",
+    "link": "https://h5.meegames.com/games/0449650479/level-devil/index.html"
+  },
+  {
     "name": "Line Rider",
     "icon": "/icons/games/library/line-rider.png",
     "link": "https://www.linerider.com/"
@@ -328,6 +373,16 @@
     "name": "Lordz.io",
     "icon": "/icons/games/lordz-io.png",
     "link": "https://lordz.io/"
+  },
+  {
+    "name": "Mad Skills Motocross 2",
+    "icon": "/icons/games/library/mad-skills-motocross-2.jpg",
+    "link": "https://h5.meegames.com/games/5401181277/mad-skills-motocross-2/index.html"
+  },
+  {
+    "name": "Magic Battleground",
+    "icon": "/icons/games/library/magic-battleground.jpg",
+    "link": "https://h5.meegames.com/games/5856956369/magic-battleground/index.html"
   },
   {
     "name": "Master Chess",
@@ -380,9 +435,24 @@
     "link": "https://yoshijunior.github.io/games/moto-x3m-winter.html"
   },
   {
+    "name": "MR RACER",
+    "icon": "/icons/games/library/mr-racer.jpg",
+    "link": "https://h5.meegames.com/games/5057808056/mr-racer-car-racing/index.html"
+  },
+  {
+    "name": "Murder",
+    "icon": "/icons/games/library/murder.jpg",
+    "link": "https://h5.meegames.com/games/9820484683/murder/index.html"
+  },
+  {
     "name": "My Perfect Hotel",
     "icon": "/icons/games/library/my-perfect-hotel.jpg",
     "link": "https://storage.y8.com/y8-studio/unity_webgl/Gani/my-perfect-hotel_v8/?key=y8&value=default"
+  },
+  {
+    "name": "Neon Challenge Legends",
+    "icon": "/icons/games/library/neon-challenge-legends.jpg",
+    "link": "https://h5.meegames.com/games/5786026479/neon-challenge-legends/index.html"
   },
   {
     "name": "OvO",
@@ -420,6 +490,11 @@
     "link": "https://h5.meegames.com/games/5198976179/planet-destruction/index.html"
   },
   {
+    "name": "Plonky",
+    "icon": "/icons/games/library/plonky.jpg",
+    "link": "https://h5.meegames.com/games/5511344626/plonky/index.html"
+  },
+  {
     "name": "Pokémon Showdown",
     "icon": "/icons/games/library/pok-mon-showdown.png",
     "link": "https://play.pokemonshowdown.com/"
@@ -453,6 +528,11 @@
     "name": "Retro Bowl",
     "icon": "/icons/games/library/retro-bowl.png",
     "link": "https://jasongamesdev.github.io/retro-bowl/"
+  },
+  {
+    "name": "Rooftop Run",
+    "icon": "/icons/games/library/rooftop-run.jpg",
+    "link": "https://h5.meegames.com/games/8293582197/rooftop-run/index.html"
   },
   {
     "name": "Run 3",
@@ -505,6 +585,11 @@
     "link": "/games/snake/index.html"
   },
   {
+    "name": "SnapStyle Dress Up",
+    "icon": "/icons/games/library/snapstyle-dress-up.jpg",
+    "link": "https://h5.meegames.com/games/5557525404/snapstyle-dress-up/index.html"
+  },
+  {
     "name": "Snow Rider 3D",
     "icon": "/icons/games/library/snow-rider-3d.png",
     "link": "https://snowrider.com/game-classic/"
@@ -518,6 +603,11 @@
     "name": "Soccer Skills 2 World Cup",
     "icon": "/icons/games/library/soccer-skills-2-world-cup.jpg",
     "link": "https://h5.meegames.com/games/9349199495/soccer-skills-2-world-cup/index.html"
+  },
+  {
+    "name": "Speed Stars",
+    "icon": "/icons/games/library/speed-stars.jpg",
+    "link": "https://h5.meegames.com/games/5284218930/speed-stars/index.html"
   },
   {
     "name": "Stickman Dragon Fight",
@@ -615,9 +705,19 @@
     "link": "https://warbrokers.io/"
   },
   {
+    "name": "We Become What We Behold",
+    "icon": "/icons/games/library/we-become-what-we-behold.jpg",
+    "link": "https://h5.meegames.com/games/3950458235/we-become-what-we-behold/index.html"
+  },
+  {
     "name": "Wordle",
     "icon": "/icons/games/library/wordle.png",
     "link": "https://jasongamesdev.github.io/wordle/"
+  },
+  {
+    "name": "World of Yarn",
+    "icon": "/icons/games/library/world-of-yarn.jpg",
+    "link": "https://h5.meegames.com/games/3455560148/world-of-yarn/index.html"
   },
   {
     "name": "Wormate.io",

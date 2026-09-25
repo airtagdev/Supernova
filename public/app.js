@@ -364,7 +364,7 @@ $('filter').addEventListener('input', renderGames);
 function loadGames() {
   if (gamesPromise) return gamesPromise;
   $('empty').hidden = false; $('empty').textContent = 'Loading your collection…';
-  gamesPromise = fetch('/games.json?v=0.1.33').then(response => { if (!response.ok) throw new Error(); return response.json(); }).then(data => {
+  gamesPromise = fetch('/games.json?v=0.1.34').then(response => { if (!response.ok) throw new Error(); return response.json(); }).then(data => {
     if (!Array.isArray(data) || data.some(game => !game || !['name','icon','link'].every(key => typeof game[key] === 'string' && game[key].trim()))) throw new Error();
     games = data; renderGames();
   }).catch(() => { gamesPromise = null; $('empty').hidden = false; $('empty').textContent = 'The game collection could not be loaded. Please reload and try again.'; });
