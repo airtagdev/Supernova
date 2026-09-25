@@ -75,6 +75,11 @@
     "link": "https://bonk.io/gameframe-release.html"
   },
   {
+    "name": "Brain Test: Tricky Puzzles",
+    "icon": "/icons/games/library/brain-test-tricky-puzzles.jpg",
+    "link": "https://html5.gamemonetize.co/9n1iq64ghq1mez9gcefqcukl9quvyp9i/?key=y8&value=default"
+  },
+  {
     "name": "Build Royale",
     "icon": "/icons/games/build-royale.jpg",
     "link": "https://buildroyale.io/"
@@ -118,6 +123,11 @@
     "name": "Crossy Road",
     "icon": "/icons/games/library/crossy-road.png",
     "link": "https://jasongamesdev.github.io/crossy-road/"
+  },
+  {
+    "name": "Crowd Rush",
+    "icon": "/icons/games/library/crowd-rush.jpg",
+    "link": "https://storage.y8.com/y8-studio/unity_webgl/Gani/crowd_rush_v1/?key=y8&value=default"
   },
   {
     "name": "Curve Fever Pro",
@@ -190,6 +200,11 @@
     "link": "https://entanglement.gopherwoodstudios.com/"
   },
   {
+    "name": "Escape From School",
+    "icon": "/icons/games/library/escape-from-school.jpg",
+    "link": "https://storage.y8.com/y8-studio/unity_webgl/Playgama/escape_from_school/?key=y8&value=default"
+  },
+  {
     "name": "ev.io",
     "icon": "/icons/games/library/ev-io.png",
     "link": "https://ev.io/"
@@ -250,6 +265,16 @@
     "link": "https://hexanaut.io/"
   },
   {
+    "name": "Hills of Steel",
+    "icon": "/icons/games/library/hills-of-steel.jpg",
+    "link": "https://playgama.com/export/game/hills-of-steel"
+  },
+  {
+    "name": "Hole.io",
+    "icon": "/icons/games/library/hole-io.jpg",
+    "link": "https://html5.gamedistribution.com/bf10577cd0644646a2a0152fe3b4d586/?gd_sdk_referrer_url=https%3A%2F%2Fwww.y8.com%2Fgames%2Fhole_io&key=y8&ratio_tolerant=true&value=default"
+  },
+  {
     "name": "Infinite Craft",
     "icon": "/icons/games/library/infinite-craft.png",
     "link": "https://neal.fun/infinite-craft/"
@@ -258,6 +283,11 @@
     "name": "Infinite Mario Bros",
     "icon": "/icons/games/library/infinite-mario-bros.png",
     "link": "https://mario5.florian-rappl.de/"
+  },
+  {
+    "name": "Karate Fighter",
+    "icon": "/icons/games/library/karate-fighter.jpg",
+    "link": "https://h5.meegames.com/games/1075236892/karate-fighter/index.html"
   },
   {
     "name": "Kick The Buddy",
@@ -300,9 +330,19 @@
     "link": "https://lordz.io/"
   },
   {
+    "name": "Master Chess",
+    "icon": "/icons/games/library/master-chess.jpg",
+    "link": "https://storage.y8.com/y8-studio/html5/Gani/master_chess/?key=y8&ratio_tolerant=true&value=default"
+  },
+  {
     "name": "Mega Mario World",
     "icon": "/icons/games/mario/mega-mario-world.jpg",
     "link": "/games/smw/index.html?game=mega-mario-world"
+  },
+  {
+    "name": "MineFun.io",
+    "icon": "/icons/games/library/minefun-io.jpg",
+    "link": "https://minefun.io/"
   },
   {
     "name": "Minesweeper Online",
@@ -340,6 +380,11 @@
     "link": "https://yoshijunior.github.io/games/moto-x3m-winter.html"
   },
   {
+    "name": "My Perfect Hotel",
+    "icon": "/icons/games/library/my-perfect-hotel.jpg",
+    "link": "https://storage.y8.com/y8-studio/unity_webgl/Gani/my-perfect-hotel_v8/?key=y8&value=default"
+  },
+  {
     "name": "OvO",
     "icon": "/icons/games/library/ovo.png",
     "link": "https://jasongamesdev.github.io/ovo/"
@@ -355,9 +400,24 @@
     "link": "https://pacman.platzh1rsch.ch/"
   },
   {
+    "name": "Paper.io 2",
+    "icon": "/icons/games/library/paper-io-2.jpg",
+    "link": "https://html5.gamedistribution.com/5f0b3c36e5204917a1d23e8685a7015e/?gd_sdk_referrer_url=https%3A%2F%2Fwww.y8.com%2Fgames%2Fpaper_io_2&key=y8&ratio_tolerant=true&value=default"
+  },
+  {
     "name": "Particle Clicker",
     "icon": "/icons/games/library/particle-clicker.png",
     "link": "https://particle-clicker.web.cern.ch/"
+  },
+  {
+    "name": "Penalty Shooters 2",
+    "icon": "/icons/games/library/penalty-shooters-2.jpg",
+    "link": "https://html5.gamedistribution.com/571b9df027e449f78e3869ba19658754?gd_sdk_referrer_url=https%3A%2F%2Fwww.y8.com%2Fgames%2Fpenalty_shooters_2&key=y8&ratio_tolerant=true&value=default"
+  },
+  {
+    "name": "Planet Destruction",
+    "icon": "/icons/games/library/planet-destruction.jpg",
+    "link": "https://h5.meegames.com/games/5198976179/planet-destruction/index.html"
   },
   {
     "name": "Pokémon Showdown",
@@ -378,6 +438,16 @@
     "name": "Radius Raid",
     "icon": "/icons/games/library/radius-raid.png",
     "link": "https://jackrugile.com/radius-raid/"
+  },
+  {
+    "name": "Real City Bikes",
+    "icon": "/icons/games/library/real-city-bikes.jpg",
+    "link": "https://playgama.com/export/game/real-city-bikes"
+  },
+  {
+    "name": "Repuls.io",
+    "icon": "/icons/games/library/repuls-io.jpg",
+    "link": "https://repuls.io/"
   },
   {
     "name": "Retro Bowl",
@@ -440,6 +510,21 @@
     "link": "https://snowrider.com/game-classic/"
   },
   {
+    "name": "Soccer REAL",
+    "icon": "/icons/games/library/soccer-real.jpg",
+    "link": "https://h5.meegames.com/games/6681422956/soccer-real/index.html"
+  },
+  {
+    "name": "Soccer Skills 2 World Cup",
+    "icon": "/icons/games/library/soccer-skills-2-world-cup.jpg",
+    "link": "https://h5.meegames.com/games/9349199495/soccer-skills-2-world-cup/index.html"
+  },
+  {
+    "name": "Stickman Dragon Fight",
+    "icon": "/icons/games/library/stickman-dragon-fight.jpg",
+    "link": "https://html5.gamemonetize.co/f0hbsg1m7jfual8m1e8gtwqmu286chsr/"
+  },
+  {
     "name": "Stickman Hook",
     "icon": "/icons/games/library/stickman-hook.png",
     "link": "https://jasongamesdev.github.io/stickman-hook/"
@@ -465,9 +550,19 @@
     "link": "https://jasongamesdev.github.io/tag/"
   },
   {
+    "name": "Talking Tom Gold Run",
+    "icon": "/icons/games/library/talking-tom-gold-run.jpg",
+    "link": "https://h5.meegames.com/games/8801991138/talking-tom-gold-run/index.html"
+  },
+  {
     "name": "Taming.io",
     "icon": "/icons/games/taming-io.png",
     "link": "https://taming.io/"
+  },
+  {
+    "name": "Tank Stars",
+    "icon": "/icons/games/library/tank-stars.jpg",
+    "link": "https://html5.gamedistribution.com/659090e00bfc4650899550d63f8a130d/?gd_sdk_referrer_url=https%3A%2F%2Fwww.y8.com%2Fgames%2Ftank_stars&key=y8&value=default"
   },
   {
     "name": "Temple Run 2",
@@ -508,6 +603,11 @@
     "name": "Universal Paperclips",
     "icon": "/icons/games/library/universal-paperclips.png",
     "link": "https://www.decisionproblem.com/paperclips/index2.html"
+  },
+  {
+    "name": "Vectaria.io",
+    "icon": "/icons/games/library/vectaria-io.jpg",
+    "link": "https://vectaria.io/"
   },
   {
     "name": "War Brokers",
