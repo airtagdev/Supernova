@@ -1,4 +1,5 @@
 import { resolveInput, gameTarget, engines } from './resolve.js';
+import { initializeSpace } from './space.js?v=0.1.35';
 import { scramjetConfig, registerProxyWorker, isOwnedWorker, withTimeout } from './proxy-runtime.js?v=20260924-1';
 const $ = id => document.getElementById(id);
 const defaults = { title: '', icon: '', engine: 'duckduckgo', preset: 'custom', theme: 'graphite', proxyEngine: 'scramjet' };
@@ -211,6 +212,14 @@ function route() {
   document.querySelectorAll('nav a').forEach(link => { if (link.hash === '#' + selected) link.setAttribute('aria-current','page'); else link.removeAttribute('aria-current'); });
 }
 window.addEventListener('hashchange', route); route(); openChangelog();
+initializeSpace($('home'), $('starfield'));
+document.querySelectorAll('[data-quick-link]').forEach(link => {
+  link.addEventListener('click', event => {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    openContent(link.href, false, false, link.textContent.trim());
+  });
+});
 const scripts = new Map();
 function loadScript(src) {
   if (scripts.has(src)) return scripts.get(src);
@@ -364,7 +373,7 @@ $('filter').addEventListener('input', renderGames);
 function loadGames() {
   if (gamesPromise) return gamesPromise;
   $('empty').hidden = false; $('empty').textContent = 'Loading your collection…';
-  gamesPromise = fetch('/games.json?v=0.1.34').then(response => { if (!response.ok) throw new Error(); return response.json(); }).then(data => {
+  gamesPromise = fetch('/games.json?v=0.1.35').then(response => { if (!response.ok) throw new Error(); return response.json(); }).then(data => {
     if (!Array.isArray(data) || data.some(game => !game || !['name','icon','link'].every(key => typeof game[key] === 'string' && game[key].trim()))) throw new Error();
     games = data; renderGames();
   }).catch(() => { gamesPromise = null; $('empty').hidden = false; $('empty').textContent = 'The game collection could not be loaded. Please reload and try again.'; });
